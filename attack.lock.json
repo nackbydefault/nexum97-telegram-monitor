@@ -1,0 +1,62 @@
+{
+  "$commento": [
+    "Impronte della fotografia MITRE ATT&CK Enterprise approvata (ADR-0058).",
+    "",
+    "Il pacchetto NON e' versionato: sono 53 835 637 byte, e qui sta la sua",
+    "impronta. scripts/fetch-attack.ps1 lo scarica e la riconfronta. E' lo stesso",
+    "modo di tdlib.lock.json, fonts.lock.json e vcredist.lock.json - il",
+    "repository conserva cio' che permette di verificare, non i dati di terze",
+    "parti.",
+    "",
+    "L'URL NON punta a `master`, che e' un riferimento che si sposta: punta al",
+    "commit, che non si sposta. E' la differenza fra `integrita'` e `provenienza`:",
+    "l'impronta dice che il file e' quello, il commit dice DA DOVE viene.",
+    "",
+    "LA LICENZA CHIEDE UNA COSA PRECISA. MITRE concede l'uso per ricerca,",
+    "sviluppo e scopi commerciali, a condizione che ogni copia riproduca la",
+    "designazione di copyright e la licenza. Percio' il testo della licenza si",
+    "scarica insieme ai dati e VIAGGIA DENTRO la fotografia: una fotografia senza",
+    "attribuzione non e' costruibile, ed e' la stessa disciplina di ADR-0005.",
+    "",
+    "Aggiornare la versione significa cambiare qui impronta, versione e commit,",
+    "con scripts/fetch-attack.ps1 -Update, e dire in DECISION_LOG perche'. Una",
+    "fotografia nuova NON cancella quella vecchia: un documento prodotto sei mesi",
+    "fa cita una tecnica come la conosceva quella versione."
+  ],
+  "generato": "2026-09-10",
+  "fonte": {
+    "nome": "MITRE ATT&CK for Enterprise",
+    "deposito": "https://github.com/mitre-attack/attack-stix-data",
+    "commit": "6cda5ad8462c79e14fbb872f4e09059b18e0cfc4",
+    "commit_data": "2026-08-05T22:56:42Z",
+    "documentazione_primaria": "https://attack.mitre.org/resources/attack-data-and-tools/",
+    "termini_uso": "https://attack.mitre.org/resources/legal-and-branding/terms-of-use/"
+  },
+  "fotografia": {
+    "versione_attack": "19.2",
+    "versione_specifica_attack": "3.3.0",
+    "dominio": "enterprise-attack",
+    "file": "assets/attack/enterprise-attack-19.2.json",
+    "origine": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/6cda5ad8462c79e14fbb872f4e09059b18e0cfc4/enterprise-attack/enterprise-attack-19.2.json",
+    "byte": 53835637,
+    "sha256": "dc1639caa5501d720e280cf1cbd8fbe009884a0c9b3e6e9ed9d0c25166c3d8f4",
+    "$atteso": [
+      "Conteggi osservati sul pacchetto fissato qui sopra, letti e non ricordati.",
+      "Servono a chi rilegge per capire se sta guardando lo stesso pacchetto anche",
+      "prima di calcolarne l'impronta.",
+      "Il pacchetto contiene anche 191 intrusion-set, 56 campaign, 733 malware e 95",
+      "tool: NEXUM NON LI IMPORTA. Sono attori, e questo prodotto non attribuisce."
+    ],
+    "tecniche": 858,
+    "tattiche": 15
+  },
+  "licenza": {
+    "identificativo": "LicenseRef-MITRE-ATTACK-Terms-of-Use",
+    "file": "assets/attack/licenses/MITRE-ATTACK-LICENSE.txt",
+    "origine": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/6cda5ad8462c79e14fbb872f4e09059b18e0cfc4/LICENSE.txt",
+    "byte": 1354,
+    "sha256": "738144f7fb054722a4ef9d3367c51710341dc12fc574c6ac3a41daaaecd8bf5e",
+    "attribuzione": "© 2026 The MITRE Corporation. This work is reproduced and distributed with the permission of The MITRE Corporation.",
+    "$obbligo": "La stringa di attribuzione e' quella scritta dentro il testo della licenza, riprodotta parola per parola. Non si abbrevia, non si traduce, non si riscrive."
+  }
+}

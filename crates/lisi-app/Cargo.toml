@@ -1,0 +1,68 @@
+[package]
+name = "lisi-telegram-monitor"
+description = "Applicazione desktop Windows NEXUM/97 - Telegram Intelligence Monitor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+build = "build.rs"
+
+[[bin]]
+name = "lisi-telegram-monitor"
+path = "src/main.rs"
+
+[features]
+# Inoltra la feature di lisi-services: serve solo perche' build.rs possa
+# accorgersene (`CARGO_FEATURE_TDLIB_RUNTIME`) e copiare la libreria TDLib
+# accanto al binario compilato. Non introduce alcuna dipendenza diretta da
+# lisi-telegram nel codice di questo crate (ADR-0010 resta intatto).
+tdlib-runtime = ["lisi-services/tdlib-runtime"]
+
+[dependencies]
+lisi-core.workspace = true
+# L'interfaccia dipende SOLTANTO dai servizi applicativi e dal dominio.
+# Non deve comparire qui alcuna dipendenza da lisi-telegram, lisi-storage o
+# lisi-security: il confine e' motivato in ADR-0010 ed e' verificato da un test.
+lisi-services.workspace = true
+# Eccezione motivata al confine, e SOLO per la cornice di finestra (ADR-0020):
+# la barra del titolo e' una proprieta' della finestra, non un'azione
+# dell'operatore. Non passa dai servizi perche' farla passare significherebbe
+# dare loro un handle di finestra, cioe' un tipo dell'interfaccia: sarebbe una
+# violazione peggiore di quella che eviterebbe.
+lisi-platform.workspace = true
+# Gia' nel lockfile come dipendenza transitiva di Slint: qui e' dichiarata per
+# poter leggere l'handle nativo della finestra, non per aggiungere codice.
+raw-window-handle = "0.6.2"
+# Senza `common-controls-v6` (OPERATOR-E2E-REMEDIATION-01): con quella funzione la
+# finestra di messaggio importa `TaskDialogIndirect`, che esiste solo nei
+# controlli comuni versione 6, e l'eseguibile — che non porta un manifesto che la
+# chieda — non partiva più (0xC0000139). La finestra «già aperto» usa così
+# `MessageBoxW`. La scelta dei file non cambia: la funzione riguardava solo i
+# messaggi. Una guardia in `dialogs.rs` lo tiene fermo.
+rfd = { version = "0.17.2", default-features = false }
+# La decodifica JPEG della foto di un profilo, SOLTANTO per mostrarla
+# (PERSON-MEDIA-01, ADR-0174, decisione 5). Gia' nel lockfile come dipendenza
+# transitiva di Slint, che la usa per le sue immagini: qui e' dichiarata per
+# trasformare i byte conservati in pixel da mostrare, in un punto solo
+# (`profile_media.rs`), con tetti di dimensione e di memoria. Nessun confronto,
+# nessuna analisi: una guardia lo sorveglia.
+image = { version = "0.25.10", default-features = false, features = ["jpeg"] }
+slint.workspace = true
+tracing.workspace = true
+tracing-appender.workspace = true
+tracing-subscriber.workspace = true
+
+[build-dependencies]
+slint-build.workspace = true
+rspolib.workspace = true
+
+[dev-dependencies]
+tempfile = "3.24.0"
+# Backend Slint senza finestre e senza ciclo di eventi. Serve a provare che
+# l'aggiornamento dello stemma NON cancelli i campi che l'operatore sta
+# compilando: e' un difetto che vive nell'innesto fra Rust e interfaccia, e
+# senza una finestra vera non si puo' dimostrare. La versione segue quella di
+# Slint: i due crate devono corrispondere.
+i-slint-backend-testing = "1.17.1"

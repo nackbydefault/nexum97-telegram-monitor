@@ -1,0 +1,20 @@
+[package]
+name = "lisi-storage"
+description = "Persistenza SQLite di NEXUM/97"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+lisi-core.workspace = true
+rusqlite.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile = "3.24.0"

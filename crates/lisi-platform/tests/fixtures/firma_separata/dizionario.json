@@ -1,0 +1,18 @@
+{
+  "format": "nexum-dictionary",
+  "format_version": 1,
+  "name": "Dizionario di prova firmato",
+  "description": "Dizionario sintetico per le prove della firma separata.",
+  "scope": "global",
+  "version": { "number": 2, "note": "Versione di prova." },
+  "terms": [
+    {
+      "text": "parola di prova",
+      "category": "prova",
+      "language": "it",
+      "match_mode": "phrase",
+      "suggested_level": 1,
+      "note": "Termine inventato."
+    }
+  ]
+}

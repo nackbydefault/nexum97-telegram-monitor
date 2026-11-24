@@ -1,0 +1,32 @@
+# Prodotti della compilazione
+/target/
+
+# Scaricati e verificati per impronta, mai versionati
+/assets/fonts/
+/artifacts/
+*.dll
+*.lib
+*.exp
+*.pdb
+
+# Dati, sessioni e configurazioni locali: mai nella repository
+/data/
+/logs/
+/reports/
+/config/
+.env
+secrets.local.toml
+*.session
+*.sqlite
+*.sqlite3
+*.db
+*.protetto
+*.log
+*.dmp
+
+# Editor
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo

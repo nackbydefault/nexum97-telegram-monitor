@@ -1,0 +1,445 @@
+// Design token di NEXUM/97.
+//
+// Ogni colore, dimensione e durata dell'interfaccia viene da qui. Nessun valore
+// letterale va scritto dentro un componente: un colore ripetuto in dodici punti
+// e' un colore che cambiera' in undici.
+//
+// ---------------------------------------------------------------------------
+// AUTORITA' — il sistema grafico approvato (ADR-0026).
+//
+// I valori attuano il **Claude Design project «NEXUM/97 Design System»**, che
+// dal 2026-08-12 e' la fonte visiva di verita'. `docs/ux/RETRO_DESIGN_SYSTEM.md`
+// resta come storia della direzione retro, non come specifica.
+//
+// Le tre deviazioni dichiarate dal sistema approvato sono elencate in
+// ADR-0026 e ripetute qui accanto al token che le porta.
+// ---------------------------------------------------------------------------
+//
+// I nomi sono SEMANTICI, non cromatici (MP-15B).
+//
+// La stesura precedente li chiamava con il loro colore - `electric-violet`,
+// `cold-cyan`, `acid-signal`, `coral-error`. Alla prima modifica di palette
+// quei nomi sarebbero diventati falsi: un token chiamato `electric-violet` che
+// contiene un blu e' un nome che mente, e mente in duecentosettanta punti.
+//
+// Un nome semantico dice a che cosa serve il colore, e sopravvive al colore.
+
+export global Palette {
+    // ------------------------------------------------------------ superfici
+    //
+    // Il campo e' blu-nero in quattro gradini. La profondita' si esprime con il
+    // valore della superficie e una linea sottile, **mai** con un'ombra: nel
+    // sistema approvato non esistono ombre, sfumature, aloni, sfocature ne'
+    // trasparenze.
+
+    // Sfondo della finestra.
+    out property <color> void: #060B18;
+    // Barra del titolo e barra di navigazione. Sta fra la finestra e i
+    // pannelli: e' la cornice fissa dell'applicazione, e si distingue da
+    // entrambi senza bordo.
+    out property <color> chrome: #0A1322;
+    // Pannelli e superfici ordinarie.
+    out property <color> panel: #0C1426;
+    // Superfici elevate, e fondo di una riga sotto il puntatore.
+    out property <color> panel-raised: #122038;
+    // Riquadri incassati dentro un pannello: piu' scuri, non piu' chiari.
+    // Un incasso che schiarisce sembra sollevato.
+    out property <color> panel-inset: #04080F;
+    // Riga scelta dall'operatore. Ha un tono proprio e non riusa `panel-raised`:
+    // «questa superficie e' sollevata» e «questa riga e' quella che hai scelto»
+    // sono informazioni diverse che compaiono insieme.
+    out property <color> selected: #16345F;
+    // Velatura dell'**unica** cella che attende una decisione umana. Compare
+    // una volta per schermata: se comparisse due volte non indicherebbe piu'
+    // nulla. Va sempre insieme ad `amber`.
+    out property <color> focal-wash: #12100A;
+
+    // ---------------------------------------------------------------- linee
+    //
+    // Tre pesi della stessa idea, dal sistema approvato.
+
+    // Separatori interni e linea di base dei grafici.
+    out property <color> line-hairline: #0F1A2E;
+    // Bordo dei pannelli e righello fra le righe di un elenco.
+    //
+    // DEVIAZIONE DICHIARATA (ADR-0026). Vale circa 1,2:1 contro `panel`, sotto
+    // la soglia di 3:1 che la norma chiede a cio' che identifica un componente.
+    // La stesura precedente usava #1F2E4A proprio per reggere quella soglia; il
+    // sistema approvato prescrive questo valore, ed e' stato adottato su
+    // decisione esplicita. Il criterio 41 di `ACCEPTANCE_CRITERIA.md` non
+    // dichiara piu' conformita' su questo punto: il rischio residuo e' che il
+    // bordo di un pannello non sia percepibile a chi ha una vista ridotta o uno
+    // schermo poco contrastato.
+    out property <color> line-divider: #16233C;
+    // Bordi rilevati.
+    out property <color> line-strong: #1F2E4A;
+
+    // -------------------------------------------------------------- cornici
+    // Cornice del pannello attivo, e lente del marchio. NON porta mai testo: a
+    // 3,96 contro `panel` supera la soglia di 3:1 del non testuale e non quella
+    // di 4,5:1 del testo.
+    out property <color> frame: #1F6FEB;
+    // Barra dei dati a riposo.
+    out property <color> frame-dim: #1E62C4;
+
+    // --------------------------------------------------------- informazione
+    // Valori vivi prodotti dalla macchina, binario attivo della navigazione,
+    // collegamenti. E' un accento razionato.
+    out property <color> cyan: #2FE4FF;
+    // Richiamo cromatico a Telegram, bordo sotto il puntatore, e il punto che
+    // dice «richiede una decisione». Esiste soltanto perche' il prodotto
+    // monitora Telegram: non e' il suo logo, non lo imita e non dichiara alcuna
+    // affiliazione (DEC-125).
+    out property <color> azure: #38B0E3;
+
+    // --------------------------------------------------------------- stati
+    //
+    // Sono quattro e soltanto quattro. Il colore non porta mai
+    // l'informazione da solo: accanto a ogni stato c'e' la sua parola.
+
+    // In corso, riuscito, regolare. **Non fa parte della scala dei livelli** e
+    // non va mai letto come tale.
+    out property <color> green: #3DF07A;
+    // Attenzione, stato intermedio, e **l'unico elemento focale** della
+    // schermata: quello su cui l'occhio deve cadere per primo. Se compare tre
+    // volte nella stessa vista, due sono di troppo - un colore che segnala
+    // tutto non segnala niente.
+    out property <color> amber: #FFB13D;
+    // Errore, allarme, comando distruttivo.
+    out property <color> coral: #FF5570;
+    // Inattivo, non disponibile, zero.
+    out property <color> idle: #5A6478;
+
+    // Anello di fuoco della tastiera. Ha un colore proprio perche' deve
+    // distinguersi da tutti gli altri stati: chi si muove con il Tab deve
+    // sapere dove si trova, e un anello che somiglia alla riga selezionata
+    // direbbe una cosa per l'altra. Il fuoco e' **sempre** un anello, mai un
+    // cambio di colore.
+    out property <color> focus: #7DE8FF;
+
+    // ------------------------------------------------- livelli di analisi 0-4
+    //
+    // Rampa formale, da informativo a critico. Il nome scritto viaggia sempre
+    // con il colore - `LIV 4` accanto a *prioritario* - cosi' che la scala non
+    // dipenda mai dal colore soltanto.
+    //
+    // L'ambra fa doppio servizio per scelta: e' il livello 2, ed e' la velatura
+    // dell'unica cella che attende una decisione.
+    out property <color> level-0: #93A4C4; // non rilevante
+    out property <color> level-1: #38B0E3; // debole
+    out property <color> level-2: #FFB13D; // medio
+    out property <color> level-3: #FF5570; // rilevante
+    // Rosso piu' profondo del corallo, cosi' che livello 3 e livello 4 si
+    // leggano distinti quando compaiono nello stesso elenco.
+    out property <color> level-4: #E63950; // prioritario
+
+    // Colore della rampa per un livello 0-4.
+    //
+    // Sta qui e non nelle schermate perche' la mappatura e' **una**: scritta a
+    // mano in due punti, al terzo qualcuno la scrive diversa, e due schermate
+    // che colorano lo stesso livello in modo diverso sono un difetto che
+    // nessun test coglie.
+    public pure function level-color(level: int) -> color {
+        return level >= 4 ? level-4
+            : level >= 3 ? level-3
+            : level >= 2 ? level-2
+            : level >= 1 ? level-1
+            : level-0;
+    }
+
+    // ---------------------------------------------------------------- grafici
+    // Rettangoli piatti e righelli da 2 a 4 px. Nessun asse, nessuna legenda,
+    // nessuna estremita' arrotondata.
+    out property <color> chart-bar: #1E62C4;
+    out property <color> chart-bar-live: #2FE4FF;
+    out property <color> chart-track: #0F1A2E;
+    out property <color> chart-neutral: #93A4C4;
+
+    // ---------------------------------------------------------------- testo
+    out property <color> text: #EAF6FF;
+    out property <color> text-muted: #93A4C4;
+    // Testo di un comando non disponibile. Il contrasto ridotto non basta da
+    // solo: chi non distingue i toni si accorge dello stato dal puntatore, che
+    // resta quello predefinito. Un comando non disponibile **resta al suo
+    // posto**: non si nasconde mai.
+    out property <color> text-disabled: #5A6478;
+    // Logotipo su una piastra chiara.
+    out property <color> text-inverse: #0B1220;
+
+    // ------------------------------------------------------ superfici tinte
+    // Fondi tenui per i messaggi, ottenuti dal proprio stato.
+    out property <color> danger-surface: #2A0F18;
+    out property <color> warning-surface: #2B2109;
+    out property <color> success-surface: #082518;
+    out property <color> info-surface: #08222F;
+    out property <color> accent-surface: #0E1F3E;
+}
+
+// Preferenze di resa che l'operatore controlla.
+//
+// Vive nei token e non in una schermata perche' ogni componente decorativo deve
+// poterla leggere senza che gliela si passi di mano in mano attraverso dieci
+// livelli di annidamento.
+//
+// Dichiarata **prima** di `Motion` perche' Motion la legge.
+export global Appearance {
+    // Un solo interruttore per le animazioni che decorano: il radar, la
+    // comparsa di una vista, l'entrata di una riga.
+    //
+    // Le animazioni che danno **riscontro** - il puntatore sopra una riga, il
+    // fuoco, la selezione, la pressione di un comando - non obbediscono a
+    // questo interruttore e restano sempre: toglierle toglierebbe il riscontro,
+    // non il movimento.
+    in-out property <bool> motion-enabled: true;
+}
+
+export global Typography {
+    // ------------------------------------------------------------- famiglie
+    //
+    // Due, e due soltanto. **Sora** porta la lingua; **IBM Plex Mono** porta
+    // tutto cio' che ha prodotto una macchina: orologi, contatori,
+    // identificativi, codici di livello, versioni, e ogni etichetta maiuscola
+    // spaziata. Un valore scritto da una persona resta in Sora.
+    //
+    // Entrambe sono incorporate nel binario: il prodotto non scarica mai un
+    // carattere. Le catene di ripiego, se un tipo non si registra su
+    // un'immagine di Windows inconsueta, sono
+    // `Sora -> Segoe UI Variable Display -> Segoe UI` e
+    // `IBM Plex Mono -> Cascadia Mono -> Consolas`.
+    out property <string> core: "Sora";
+    out property <string> mono: "IBM Plex Mono";
+    out property <string> core-fallback: "Segoe UI Variable Display";
+    out property <string> mono-fallback: "Cascadia Mono";
+
+    // --------------------------------------------------------------- corpi
+    // Sora.
+    out property <length> display: 42px; // «Operativo»
+    out property <length> counter-figure: 34px; // cifra di una cella contatore
+    out property <length> screen-title: 26px;
+    out property <length> panel-title: 16px;
+    out property <length> wordmark: 16px;
+    out property <length> lede: 13.5px;
+    out property <length> nav: 13.5px;
+    out property <length> row-title: 13.5px;
+    out property <length> body: 12.5px;
+    out property <length> caption: 11.5px;
+
+    // IBM Plex Mono.
+    out property <length> num-lg: 18px; // orologio dell'ultimo checkpoint
+    out property <length> num: 12px;
+    out property <length> technical: 11px;
+    out property <length> technical-sm: 10.5px;
+    out property <length> eyebrow: 10px; // STATO DEL SISTEMA
+    out property <length> label: 9.5px; // ACQUISITI
+    out property <length> tag: 9px; // INTELLIGENCE MONITOR
+
+    // Corpi della stesura precedente, ancora chiamati dalle schermate non
+    // migrate. MV-2 li sostituisce con quelli sopra.
+    out property <length> section-title: 17px;
+    out property <length> group-label: 12px;
+    out property <length> body-secondary: 13px;
+    out property <length> counter: 26px;
+
+    // --------------------------------------------------------------- pesi
+    //
+    // Il peso massimo del sistema approvato e' **500**. Niente e' grassetto.
+    out property <int> light: 300; // titoli, contatori, corpo denso
+    out property <int> regular: 400; // titolo di riga
+    out property <int> medium: 500; // logotipo, voce di menu attiva
+
+    // ------------------------------------------------------- spaziatura
+    //
+    // Si spazia **solo** il monospaziato. Il testo in Sora non e' mai spaziato.
+    // I valori sono in pixel al corpo nominale del proprio ruolo, perche'
+    // Slint esprime `letter-spacing` in lunghezza e non in em.
+    out property <length> track-eyebrow: 2px; // .2em a 10px
+    out property <length> track-label: 1.52px; // .16em a 9.5px
+    out property <length> track-tag: 1.17px; // .13em a 9px
+    out property <length> track-titlebar: 0.96px; // .08em a 12px
+    out property <length> track-wordmark: 0.96px; // .06em a 16px
+}
+
+export global Spacing {
+    // La scala e' **misurata, non idealizzata**: 7, 9, 22, 26 e 34 sono valori
+    // reali del riferimento approvato e non vanno arrotondati a una griglia da
+    // 4 o da 8.
+    out property <length> xs: 4px;
+    out property <length> xxs: 6px;
+    out property <length> tight: 7px;
+    out property <length> sm: 8px;
+    out property <length> snug: 9px;
+    out property <length> md: 12px;
+    out property <length> lg: 18px;
+    out property <length> xl: 24px;
+    out property <length> block: 26px;
+    out property <length> section: 30px;
+    out property <length> xxl: 32px;
+    out property <length> row: 34px;
+    out property <length> column: 48px;
+
+    // ---------------------------------------------------------------- forme
+    //
+    // I raggi sono contenuti: 0 per grafici e righelli, 4 per le targhette
+    // monospaziate, 9 per righe e comandi, 10 per pannelli e campi.
+    out property <length> radius-none: 0px;
+    out property <length> radius-chip: 4px;
+    out property <length> radius-row: 9px;
+    out property <length> radius-panel: 10px;
+
+    out property <length> hairline: 1px;
+    // Bordo dei comandi e dei riquadri che ne hanno bisogno. Uno, non due: una
+    // cornice spessa su una superficie arrotondata la fa sembrare un adesivo.
+    out property <length> frame-width: 1px;
+    // Binario a sinistra di una riga di navigazione o di elenco.
+    out property <length> rail-width: 2px;
+    // Binario di livello a tutta altezza sulle schede documento.
+    out property <length> level-rail-width: 3px;
+}
+
+// Geometria fissa del guscio dell'applicazione.
+//
+// Sono i valori misurati del riferimento approvato. Stanno in un global proprio
+// perche' non sono spaziatura: sono le dimensioni di parti che esistono una
+// volta sola, e cambiarle sposta l'intera finestra.
+export global Shell {
+    out property <length> titlebar-height: 38px;
+    // Larghezza di un comando della barra del titolo, e dei tre insieme.
+    //
+    // La somma la legge anche `lisi-platform::title_bar`, che deve sapere dove
+    // finisce la fascia trascinabile: su quella zona la risposta a Windows e'
+    // «area cliente», cosi' che premere «chiudi» chiuda invece di iniziare un
+    // trascinamento. Se cambia qui, va cambiata anche di la' - ed e' il motivo
+    // per cui il valore viene passato da Rust invece di essere scritto due
+    // volte.
+    out property <length> titlebar-command-width: 46px;
+    out property <length> titlebar-commands-width: 138px;
+    out property <length> sidebar-width: 252px;
+    out property <length> sidebar-pad-top: 32px;
+    out property <length> sidebar-pad-side: 24px;
+    out property <length> sidebar-pad-bottom: 22px;
+    // Il riempimento del contenuto, piu' stretto (UX-EXCELLENCE-02, SIM3-04):
+    // era 40 / 48 / 34, misurato sul riferimento a 1440 pixel; alle misure in cui
+    // si lavora davvero, 1120×720 e 1000×660, quei margini erano righe di elenco
+    // che non si vedevano.
+    out property <length> content-pad-top: 22px;
+    out property <length> content-pad-side: 32px;
+    out property <length> content-pad-bottom: 18px;
+    // 30 e non 34 (UX-EXCELLENCE-02, SIM3-04): con 32 voci, quattro pixel per
+    // voce sono tre voci in piu' visibili senza scorrere il menu.
+    out property <length> nav-item-height: 30px;
+    out property <length> nav-item-pad: 14px;
+    out property <length> stat-cell-pad-v: 22px;
+    out property <length> stat-cell-pad-h: 24px;
+    out property <length> list-row-pad-v: 15px;
+}
+
+export global Motion {
+    // Quattro ruoli, e nient'altro. Ogni transizione del prodotto si chiama
+    // contro una di queste durate, cosi' che nessuna ne introduca una quinta.
+    //
+    // Vincoli che sopravvivono all'implementazione:
+    // - mai piu' di un elemento in movimento sullo schermo;
+    // - nessuna animazione ritarda un'azione: il cambio di stato e' immediato
+    //   e la transizione lo decora;
+    // - vietati glitch, scanline e lampeggio.
+
+    // Pressione di un comando: 1px di cedimento. Deve sembrare immediata.
+    out property <duration> instant: 90ms;
+    // Puntatore, fuoco, cambio di stato, contatori.
+    out property <duration> quick: 160ms;
+    // Comparsa di una vista o di un pannello: 6px di salita, 40ms di sfalso,
+    // al massimo tre gradini.
+    //
+    // DEVIAZIONE RIENTRATA (ADR-0026). Valeva 400ms, portata li' perche' a
+    // 240ms la comparsa di una pagina non si percepiva su fondo scuro. Il
+    // sistema approvato prescrive 220ms ed e' stato adottato su decisione
+    // esplicita: se la comparsa torna impercettibile, il fatto va rilevato
+    // guardando il prodotto, non ripristinato d'ufficio.
+    out property <duration> transition: 220ms;
+    // Respiro dell'indicatore di connessione. E' **l'unica animazione in
+    // ciclo** del prodotto.
+    out property <duration> breath: 2400ms;
+    // Giro del radar, mostrato solo a monitoraggio in corso.
+    //
+    // DEVIAZIONE DICHIARATA (ADR-0026). Il sistema approvato mette il radar fra
+    // le animazioni vietate; il radar e' pero' approvato da DEC-127 e costruito
+    // in MP-16, e il sistema grafico e' stato derivato da schermate che lo
+    // precedono. Resta, e obbedisce ad `Appearance.motion-enabled`.
+    out property <duration> sweep: 2000ms;
+
+    // Durata della comparsa di una vista **gia' filtrata** dalla preferenza
+    // dell'operatore. I componenti che animano un'entrata leggono questa, non
+    // `transition`, cosi' che la riduzione del movimento non vada ricordata
+    // in venti punti diversi.
+    out property <duration> transition-effective: Appearance.motion-enabled ? 220ms : 0ms;
+    // Salita di una comparsa, azzerata dalla stessa preferenza.
+    out property <length> enter-rise: Appearance.motion-enabled ? 6px : 0px;
+
+    // Un fotogramma, e non un quinto ruolo: il tempo che serve a un valore per
+    // posarsi prima che l'animazione della comparsa lo veda cambiare. Non
+    // decora niente, non si vede, e non ha nulla da filtrare quando il
+    // movimento e' ridotto.
+    //
+    // Ha un nome perche' una durata scritta a mano in mezzo all'interfaccia e'
+    // indistinguibile da un ruolo dimenticato: e' cosi' che il respiro del
+    // radar e' rimasto per un mese a 2600ms mentre il suo ruolo ne dichiarava
+    // 2400 (ADR-0116).
+    out property <duration> settle: 16ms;
+}
+
+// Segnale che qualcuno sta usando l'applicazione.
+//
+// Serve al blocco automatico, che deve distinguere «nessuno c'e'» da «nessuno
+// preme perche' sta leggendo». Vive nei token per la stessa ragione di
+// `Appearance`: ogni comando deve poterlo emettere senza che glielo si passi
+// di mano in mano attraverso dieci livelli di annidamento.
+//
+// **Che cosa conta come attivita', e che cosa no.** Conta un comando premuto.
+// Non conta il movimento del mouse: `GetLastInputInfo` di Windows lo direbbe,
+// ma direbbe anche l'attivita' in **altri programmi** — un collega che usa il
+// foglio di calcolo terrebbe sbloccata la nostra postazione, che e' esattamente
+// il caso da cui il blocco protegge. Il prezzo di questa scelta e' dichiarato:
+// chi legge una schermata per piu' dei minuti impostati senza premere nulla si
+// trova la postazione bloccata, e la riapre con la propria parola.
+export global Activity {
+    callback touched();
+}
+
+// La postazione bloccata, vista da ogni comando (OPERATOR-E2E-REMEDIATION-01,
+// F-01).
+//
+// A postazione bloccata la schermata di blocco copre tutto e il contenuto sotto
+// e' nascosto: non si disegna, non riceve il puntatore, il Tab non ci passa.
+// Questa e' la seconda barriera, e c'e' perche' la prima non basta da sola: le
+// tecnologie assistive — un lettore di schermo, o qualunque programma di
+// automazione aperto sulla stessa sessione di Windows — chiedono a un comando
+// la sua azione predefinita senza passare dal puntatore ne' dal fuoco, e un
+// comando nascosto la eseguirebbe. Ogni comando condiviso legge qui se e' il
+// momento di rispondere, e a postazione bloccata non risponde.
+//
+// La terza barriera e' nel codice Rust, sui comandi che cambiano o cancellano
+// (`lock::refuse_while_locked`). Si imposta in un posto solo: la proprieta'
+// `station-locked` della finestra ne e' l'alias, e Rust scrive quella.
+export global StationLock {
+    in-out property <bool> engaged: false;
+}
+
+// LA REGOLA DEL FUOCO DELLA FINESTRA (A11Y-02, ADR-0194, E2E01-09).
+//
+// Quando un'azione toglie dallo schermo l'elemento che aveva il fuoco, Slint
+// non lo sposta altrove: il Tab successivo riparte dal primo elemento della
+// finestra, e Shift+Tab dall'ultimo, cioe' da «Chiudi». La regola: il fuoco
+// perso riprende **dall'inizio della schermata aperta**.
+//
+// Il Tab di un comando vivo e il Tab senza fuoco sono lo stesso tasto: li
+// distingue `navigating`, che i comandi accendono quando ricevono un Tab e la
+// finestra spegne al giro dopo. Il Tab senza fuoco non arriva a nessuno.
+export global FocusRule {
+    // Vero fra il Tab ricevuto da un comando vivo e il giro dopo.
+    in-out property <bool> navigating: false;
+    // Quante volte il fuoco perso e' ripreso dall'inizio della schermata. Lo
+    // leggono le prove: il backend di prova non dice dove sta il fuoco.
+    in-out property <int> resumed: 0;
+    // Vero mentre l'inizio della schermata ha il fuoco.
+    in-out property <bool> at-screen-start: false;
+}

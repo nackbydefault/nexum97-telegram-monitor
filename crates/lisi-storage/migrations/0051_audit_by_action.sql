@@ -1,0 +1,21 @@
+-- 0051 — Un indice sull'azione dell'audit.
+--
+-- # Perche' esiste
+--
+-- Il registro d'audit e' in **sola aggiunta** e cresce per tutta la vita
+-- dell'installazione: nessuno lo pota, ed e' giusto cosi'.
+--
+-- Sei percorsi di produzione gli ponevano la stessa domanda — «qualcuno ha mai
+-- registrato la ragione operativa?» — caricando **ogni riga** e cercando fra
+-- quelle. Su un archivio giovane non si vede; su uno vecchio, la domanda costa
+-- quanto tutto cio' che l'ufficio ha fatto dal primo giorno.
+--
+-- L'unico indice esistente era su `recorded_at`, che serve a leggere il
+-- registro in ordine e non aiuta a cercare un'azione.
+--
+-- # Perche' un indice e non un tetto
+--
+-- Perche' la domanda non chiede righe: chiede **se ne esiste una**. Con questo
+-- indice la risposta costa quanto una ricerca, non quanto il registro.
+
+CREATE INDEX IF NOT EXISTS audit_by_action ON audit (action);

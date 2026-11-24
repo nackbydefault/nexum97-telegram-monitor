@@ -1,0 +1,2678 @@
+// Libreria di componenti di NEXUM/97.
+//
+// Il design system prevedeva diciotto componenti. Fino alla Milestone 15 ne
+// esistevano QUATTRO, e tutto il resto era scritto a mano dentro
+// `app-window.slint`: 4856 righe, quattordici pagine, settantadue colori
+// letterali. Un tema applicato a mano in centinaia di punti e' la duplicazione
+// che il sistema di token esiste per impedire, ed e' la ragione per cui i
+// componenti vengono PRIMA del tema (DEC-125).
+//
+// Regole valide per ogni componente di questo file:
+//
+// - nessun valore letterale. Colori, dimensioni e durate vengono dai token;
+// - ogni elemento interattivo costruito a mano ha un `FocusScope` accanto alla
+//   `TouchArea`, e disegna l'anello di fuoco. Senza, quell'elemento **non
+//   esiste per la tastiera**;
+// - il `FocusScope` si dichiara PRIMA della `TouchArea`. In Slint l'elemento
+//   dichiarato per ultimo sta sopra e riceve per primo gli eventi del
+//   puntatore: invertendoli, il primo click viene consumato dallo spostamento
+//   del fuoco e serve un secondo click per attivare;
+// - ogni elemento che dichiara un ruolo dichiara anche un nome;
+// - nessuno stato si distingue **soltanto** per il colore.
+
+import { Palette, Typography, Spacing, Motion, Appearance, Activity, StationLock, FocusRule } from "tokens.slint";
+
+// Peso di un comando. Non e' una scelta estetica: dice all'operatore quanto
+// costa premerlo.
+export enum Weight {
+    // Azione principale della schermata.
+    primary,
+    // Azione ordinaria.
+    secondary,
+    // Azione che distrugge qualcosa. Ha un colore proprio perche' un comando
+    // distruttivo che somiglia a uno ordinario raccoglie un consenso su
+    // un'altra domanda (DEC-115).
+    danger,
+}
+
+// Tono di un messaggio o di uno stato.
+export enum Tone { neutral, info, success, warning, danger }
+
+// ---------------------------------------------------------------- Panel
+//
+// Il contenitore di quasi tutto. La cornice spessa e' l'elemento che porta piu'
+// identita' retro, e quello che si puo' sbagliare piu' facilmente: non si
+// annida oltre due livelli, perche' tre bordi concentrici fanno un modulo
+// cartaceo invece di una schermata.
+export component Panel inherits Rectangle {
+    in property <string> title;
+    in property <string> subtitle;
+    // Un pannello in primo piano porta la cornice viva; gli altri quella
+    // spenta. E' come si legge dove si sta lavorando senza contare i pannelli.
+    in property <bool> active: false;
+
+    // Nessuna cornice sui pannelli: si distinguono dal fondo per il TONO, non
+    // per un bordo. E' come li disegnava l'interfaccia prima della Milestone
+    // 15, ed e' la scelta che la fa leggere come professionale invece che come
+    // strumentazione: una cornice spessa attorno a ogni riquadro riempie la
+    // schermata di linee che non dicono nulla.
+    //
+    // Il pannello attivo si distingue con una linea sottile, non con una
+    // cornice: basta a dire dove si sta lavorando, e non pesa.
+    background: Palette.panel;
+    border-width: root.active ? Spacing.hairline : 0px;
+    border-color: Palette.line-divider;
+    border-radius: Spacing.radius-panel;
+
+    animate border-color {
+        duration: Motion.quick;
+        easing: ease-out;
+    }
+
+    VerticalLayout {
+        padding: Spacing.lg;
+        spacing: Spacing.md;
+
+        if root.title != "": VerticalLayout {
+            spacing: Spacing.xs;
+            vertical-stretch: 0;
+
+            Text {
+                text: root.title;
+                color: Palette.text;
+                font-size: Typography.section-title;
+                font-weight: Typography.medium;
+            }
+
+            if root.subtitle != "": Text {
+                text: root.subtitle;
+                color: Palette.text-muted;
+                font-size: Typography.body-secondary;
+                wrap: word-wrap;
+            }
+        }
+
+        @children
+    }
+}
+
+// ------------------------------------------------------------ HudButton
+//
+// Angoli vivi, cornice spessa, cinque stati distinguibili senza colore:
+// normale, in evidenza, premuto, con il fuoco, disabilitato.
+export component HudButton inherits Rectangle {
+    in property <string> label;
+    in property <Weight> weight: Weight.secondary;
+    in property <bool> enabled: true;
+    // Quando il comando e' disabilitato, dire PERCHE'. Un pulsante spento senza
+    // motivo lascia l'operatore a indovinare se sia un divieto o un guasto.
+    in property <string> reason;
+    // La scelta corrente, quando il pulsante e' una di piu' alternative (la
+    // durata del monitoraggio, SIM3-15). Si vede dal bordo azzurro doppio e dal
+    // peso del testo, non solo dal colore, e una tecnologia assistiva la legge
+    // come «scelto».
+    in property <bool> selected: false;
+    // Il solo comando che resta vivo a postazione bloccata e' quello che la
+    // sblocca: lo dichiara cosi', e nessun altro lo fa (F-01).
+    in property <bool> lock-surface: false;
+    // L'etichetta resta intera: il pulsante non si stringe sotto il suo testo
+    // (INSTALLED-APP-E2E-01, E2E01-18: «Perché questo stato?» troncato). Non è
+    // il comportamento di tutti i pulsanti perché, in una riga piena, un
+    // pulsante che non si stringe spinge gli altri fuori: si accende dove la
+    // riga ha spazio e l'etichetta conta.
+    in property <bool> keep-label: false;
+    callback clicked();
+
+    // Se il comando risponde adesso: acceso, e non coperto dal blocco.
+    property <bool> live: root.enabled && (!StationLock.engaged || root.lock-surface);
+
+    // L'unico punto da cui il comando parte. Tastiera, puntatore e tecnologie
+    // assistive passano tutti di qui, e la condizione si scrive una volta: era
+    // l'azione dell'accessibilita' a non guardarla, e un pulsante spento si
+    // premeva da un lettore di schermo (OPERATOR-E2E-REMEDIATION-01, F-01).
+    function press() {
+        if (!root.live) {
+            return;
+        }
+        Activity.touched();
+        root.clicked();
+    }
+
+    // Chi chiama `focus()` sul pulsante lo da' al suo `FocusScope`: serve alla
+    // schermata di blocco, che tiene il Tab fra il campo e «Sblocca».
+    forward-focus: focus;
+    // Dice a un riquadro che tiene il Tab fra i suoi comandi quale lo ha
+    // adesso (A11Y-02, la domanda prima di chiudere).
+    out property <bool> has-focus: focus.has-focus;
+
+    height: 34px;
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    min-width: root.keep-label
+        ? max(96px, etichetta.preferred-width + 2 * Spacing.md)
+        : 96px;
+    border-radius: Spacing.radius-row;
+    border-width: root.selected ? 2px : Spacing.hairline;
+
+    // Il comando e' una superficie PIENA con un bordo sottile, non un riquadro
+    // cavo con una cornice spessa: quest'ultimo legge come pannello di
+    // controllo, il primo come pulsante. L'azione principale si distingue per
+    // il riempimento, non per lo spessore del bordo.
+    //
+    // Il bordo e' `frame-dim` e non `hairline`, e la ragione e' misurata: il
+    // riempimento di un comando secondario vale **1,13** contro il pannello -
+    // cioe' non si distingue affatto - e con un bordo a 1,35 il pulsante non
+    // avrebbe alcun confine percepibile. `frame-dim` vale 3,15 e regge la
+    // soglia che la norma chiede a cio' che identifica un componente.
+    //
+    // Un pixel di blu, non due: basta a dire «qui c'e' un comando» senza
+    // rifare la cornice spessa che e' stata appena tolta.
+    border-color: !root.enabled
+        ? Palette.line-divider
+        : root.selected
+            ? Palette.cyan
+            : (root.weight == Weight.danger ? Palette.coral : Palette.frame-dim);
+
+    background: !root.enabled
+        ? Palette.panel
+        : (touch.pressed || root.selected
+            ? Palette.selected
+            : (root.weight == Weight.primary
+                ? (touch.has-hover ? Palette.frame : Palette.frame-dim)
+                : (touch.has-hover ? Palette.selected : Palette.panel-raised)));
+
+    animate background, border-color {
+        duration: Motion.instant;
+        easing: ease-out;
+    }
+
+    HorizontalLayout {
+        padding-left: Spacing.md;
+        padding-right: Spacing.md;
+
+        etichetta := Text {
+            text: root.label;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            font-size: Typography.body;
+            font-weight: root.weight == Weight.primary || root.selected
+                ? Typography.medium
+                : Typography.regular;
+            color: !root.enabled
+                ? Palette.text-disabled
+                : (root.weight == Weight.danger ? Palette.coral : Palette.text);
+        }
+    }
+
+    focus := FocusScope {
+        enabled: root.live;
+        key-pressed(event) => {
+            if (event.text == Key.Return || event.text == " ") {
+                root.press();
+                return accept;
+            }
+            // Il Tab di un comando vivo non e' un fuoco perso (ADR-0194).
+            if (event.text == Key.Tab || event.text == Key.Backtab) {
+                FocusRule.navigating = true;
+            }
+            return reject;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.live;
+        // Il puntatore predefinito su un comando spento e' il secondo segnale
+        // dello stato, per chi non distingue la differenza di tono.
+        mouse-cursor: root.enabled ? MouseCursor.pointer : MouseCursor.default;
+        clicked => {
+            // Ogni comando premuto e' un segnale che qualcuno c'e': e' cosi'
+            // che il blocco automatico distingue una postazione lasciata da
+            // una in uso. Sta in `press` e non in ogni chiamante perche' un
+            // segnale che va ricordato a ogni pulsante e' un segnale che prima
+            // o poi qualcuno dimentica.
+            focus.focus();
+            root.press();
+        }
+    }
+
+    Rectangle {
+        background: transparent;
+        // L'anello di fuoco resta a due pixel anche ora che le cornici sono
+        // sottili: e' l'unico segnale di dove si trova chi usa la tastiera, e
+        // assottigliarlo per uniformita' lo renderebbe piu' difficile da
+        // vedere proprio a chi serve.
+        border-width: focus.has-focus ? 2px : 0px;
+        border-color: Palette.focus;
+        border-radius: Spacing.radius-row;
+    }
+
+    accessible-role: button;
+    accessible-label: (root.selected ? @tr("{}, scelto", root.label) : root.label) + (root.reason == "" ? "" : ". " + root.reason);
+    accessible-enabled: root.live;
+    accessible-action-default => {
+        root.press();
+    }
+}
+
+// ----------------------------------------------------------- StatusBadge
+//
+// Lo stato si legge come PAROLA. Il colore lo rafforza e non lo sostituisce:
+// una pastiglia che dice soltanto «verde» non dice niente a chi non distingue
+// il verde, e nulla a chi ascolta la schermata invece di guardarla.
+export component StatusBadge inherits Rectangle {
+    in property <string> label;
+    in property <Tone> tone: Tone.neutral;
+
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    height: 22px;
+    border-radius: Spacing.radius-row;
+    border-width: Spacing.hairline;
+
+    property <color> ink:
+        root.tone == Tone.success ? Palette.green
+        : root.tone == Tone.warning ? Palette.amber
+        : root.tone == Tone.danger ? Palette.coral
+        : root.tone == Tone.info ? Palette.cyan
+        : Palette.text-muted;
+
+    background:
+        root.tone == Tone.success ? Palette.success-surface
+        : root.tone == Tone.warning ? Palette.warning-surface
+        : root.tone == Tone.danger ? Palette.danger-surface
+        : root.tone == Tone.info ? Palette.info-surface
+        : Palette.panel-raised;
+
+    border-color: root.ink;
+
+    HorizontalLayout {
+        padding-left: Spacing.sm;
+        padding-right: Spacing.sm;
+
+        Text {
+            text: root.label;
+            color: root.ink;
+            font-size: Typography.group-label;
+            font-weight: Typography.medium;
+            vertical-alignment: center;
+        }
+    }
+
+    accessible-role: text;
+    accessible-label: root.label;
+}
+
+// --------------------------------------------------------------- Counter
+//
+// Cifra HUD con la sua didascalia. `focal` lo accende con il colore
+// dell'attenzione: va acceso su UN SOLO contatore per schermata, quello su cui
+// si agisce. Un colore che segnala tutto non segnala niente.
+export component Counter inherits Rectangle {
+    in property <string> caption;
+    in property <int> value;
+    in property <bool> focal: false;
+    // Un contatore diventa un COMANDO soltanto dove il filtro che accende si
+    // vede agire, cioe' nell'elenco dei contenuti. Altrove resta una cifra: un
+    // numero che al tocco cambia una schermata che non si sta guardando
+    // sarebbe una trappola, non una scorciatoia.
+    in property <bool> actionable: false;
+    // Se il filtro di questo contatore e' quello acceso. Il tono da solo non
+    // lo direbbe: la spunta nell'etichetta e' il segnale che resta anche a chi
+    // i toni non li distingue.
+    in property <bool> active: false;
+    callback clicked();
+
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    height: 52px;
+    min-width: 150px;
+    // Il riquadro si stacca dal pannello per il TONO - `panel-raised` e' piu'
+    // chiaro di `panel` - e non per una cornice. Il bordo sottile lo rifinisce
+    // senza disegnargli attorno una scatola.
+    background: root.active
+        ? Palette.selected
+        : (root.actionable && touch.has-hover ? Palette.selected : Palette.panel-raised);
+    border-radius: Spacing.radius-panel;
+    border-width: Spacing.hairline;
+    border-color: root.active
+        ? Palette.cyan
+        : (root.focal && root.value > 0 ? Palette.amber : Palette.line-divider);
+
+    HorizontalLayout {
+        padding-left: Spacing.md;
+        padding-right: Spacing.md;
+        spacing: Spacing.sm;
+
+        Text {
+            text: root.value;
+            color: root.focal && root.value > 0 ? Palette.amber : Palette.cyan;
+            font-size: Typography.counter;
+            font-weight: Typography.medium;
+            vertical-alignment: center;
+        }
+
+        Text {
+            text: root.active ? root.caption + " \u{2713}" : root.caption;
+            color: Palette.text-muted;
+            font-size: Typography.group-label;
+            vertical-alignment: center;
+            wrap: word-wrap;
+        }
+    }
+
+    // Il fuoco si spegne con `enabled`, come in `HudButton`: dichiararlo
+    // dentro un `if` lo renderebbe innominabile dall'anello di fuoco qui
+    // sotto, che e' un elemento fratello.
+    // Comando solo dove lo e', e mai a postazione bloccata (F-01).
+    property <bool> live: root.actionable && !StationLock.engaged;
+
+    function press() {
+        if (!root.live) {
+            return;
+        }
+        Activity.touched();
+        root.clicked();
+    }
+
+    focus := FocusScope {
+        enabled: root.live;
+        key-pressed(event) => {
+            if (event.text == Key.Return || event.text == " ") {
+                root.press();
+                return accept;
+            }
+            // Il Tab di un comando vivo non e' un fuoco perso (ADR-0194).
+            if (event.text == Key.Tab || event.text == Key.Backtab) {
+                FocusRule.navigating = true;
+            }
+            return reject;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.live;
+        mouse-cursor: root.actionable ? MouseCursor.pointer : MouseCursor.default;
+        clicked => {
+            root.press();
+        }
+    }
+
+    Rectangle {
+        background: transparent;
+        border-width: root.actionable && focus.has-focus ? 2px : 0px;
+        border-color: Palette.focus;
+        border-radius: Spacing.radius-panel;
+    }
+
+    // Il ruolo dichiarato all'accessibilita' deve essere COSTANTE: Slint non
+    // accetta un'espressione, e ha ragione — un elemento che un momento si
+    // annuncia come dato e un momento come comando e' peggio di entrambi. Si
+    // dichiarano quindi due elementi distinti, uno per ciascuna natura, e a
+    // esistere e' sempre e solo quello giusto.
+    if !root.actionable: Rectangle {
+        accessible-role: text;
+        accessible-label: root.value + " " + root.caption;
+    }
+
+    // Chi non vede il riquadro deve sapere **che cosa succede premendo**, non
+    // soltanto quanto vale il numero: senza, un comando si annuncia come un
+    // dato e nessuno prova a premerlo.
+    if root.actionable: Rectangle {
+        accessible-role: button;
+        accessible-label: root.active ? @tr("{} {}. Filtro acceso: premere per toglierlo.", root.value, root.caption) : @tr("{} {}. Premere per vedere soltanto questi.", root.value, root.caption);
+        accessible-action-default => {
+            root.press();
+        }
+    }
+}
+// -------------------------------------------------------------- StatCard
+//
+// Il riquadro di sintesi della Dashboard: etichetta, dato, e una riga che dice
+// che cosa farne.
+//
+// E' un componente e non tre blocchi scritti a mano perche' erano **tre blocchi
+// scritti a mano**, quasi identici, e ogni riquadro nuovo era un quarto. La
+// terza riga e' la ragione per cui non basta `Counter`: un numero senza il
+// proprio seguito lascia l'operatore a chiedersi che cosa se ne fa, e la
+// risposta finiva ogni volta in un `Text` copiato.
+export component StatCard inherits Rectangle {
+    in property <string> caption;
+    // Il dato e' una stringa e non un intero: questi riquadri mostrano anche
+    // "Attivo" e "Non configurato", che non sono numeri. Costringerli a esserlo
+    // avrebbe significato un secondo componente per dire la stessa cosa.
+    in property <string> value;
+    in property <string> note;
+    // Acceso in ambra. Vale per UN SOLO riquadro per schermata, quello su cui
+    // si agisce: un colore che segnala tutto non segnala niente.
+    in property <bool> focal: false;
+
+    height: 116px;
+    background: Palette.panel;
+    border-radius: Spacing.radius-panel;
+
+    VerticalLayout {
+        padding: Spacing.lg;
+        spacing: Spacing.sm;
+
+        // Etichetta del riquadro: **monospaziata, minuscola di corpo e
+        // spaziata**. E' cio' che il riferimento chiama etichetta di cella —
+        // «ACQUISITI», «DA ESAMINARE» — e sta in IBM Plex Mono perche' e' una
+        // targa che nomina un dato, non una frase.
+        //
+        // Le etichette in minuscolo NON seguono questa strada: «configurato»,
+        // «avvisi in attesa di una decisione» sono lingua e restano in Sora.
+        // Il monospaziato spaziato su una frase la rende un'insegna.
+        Text {
+            text: root.caption;
+            color: Palette.text-muted;
+            font-family: Typography.mono;
+            font-size: Typography.label;
+            font-weight: Typography.regular;
+            letter-spacing: Typography.track-label;
+        }
+
+        // Il corpo si adatta alla lunghezza.
+        //
+        // Il riferimento approvato vuole qui una **cifra**, con la parola che
+        // la qualifica sotto. Questo riquadro mostra pero' anche stati -
+        // «Attivo», «Non configurato» - e a 26px una parola di quindici lettere
+        // non entra in una cella stretta: usciva elisa, «Non config...», che e'
+        // peggio di piccola perche' non si legge affatto.
+        //
+        // Trovato **guardando la finestra**, non da un test: nessun test misura
+        // se una parola entra. Era comparso restringendo la colonna del
+        // contenuto con il riempimento approvato, che ha tolto 62px di larghezza
+        // utile - la cella era gia' al limite e nessuno poteva saperlo.
+        Text {
+            text: root.value;
+            color: root.focal ? Palette.amber : Palette.text;
+            font-size: root.value.character-count > 8
+                ? Typography.panel-title
+                : Typography.counter;
+            font-weight: Typography.medium;
+            overflow: elide;
+        }
+
+        Text {
+            text: root.note;
+            color: Palette.text-muted;
+            font-size: Typography.body-secondary;
+            wrap: word-wrap;
+        }
+    }
+
+    // Un riquadro solo, letto in una volta sola. Le tre righe lette
+    // separatamente darebbero "FONTI CONFIGURATE", "3", "Gestite dalla
+    // schermata Fonti": tre frammenti fra cui chi ascolta deve ricostruire il
+    // rapporto.
+    accessible-role: text;
+    accessible-label: root.caption + ": " + root.value + ". " + root.note;
+}
+
+// --------------------------------------------------------------- ListRow
+//
+// Riga non interattiva.
+export component ListRow inherits Rectangle {
+    in property <bool> alternate: false;
+
+    vertical-stretch: 0;
+    background: root.alternate ? Palette.panel-raised : Palette.panel-inset;
+    border-radius: Spacing.radius-row;
+
+    HorizontalLayout {
+        padding: Spacing.md;
+        spacing: Spacing.md;
+        @children
+    }
+}
+
+// --------------------------------------------------------- SelectableRow
+//
+// Riga che si sceglie. La scelta si vede da TRE segnali: la superficie, la
+// barra di accento a sinistra e la cornice. Il primo da solo e' una differenza
+// di tono fra due superfici scure, che e' esattamente cio' che non si distingue
+// su un monitor mal calibrato o con una vista ridotta.
+export component SelectableRow inherits Rectangle {
+    in property <bool> selected: false;
+    in property <string> name;
+    callback chosen();
+
+    vertical-stretch: 0;
+    // La riga non puo' essere piu' bassa di cio' che contiene.
+    min-height: contenuto.preferred-height;
+    border-radius: Spacing.radius-row;
+    border-width: Spacing.hairline;
+    border-color: root.selected ? Palette.frame : transparent;
+    background: root.selected
+        ? Palette.selected
+        : (touch.has-hover ? Palette.panel-raised : Palette.panel-inset);
+
+    animate background {
+        duration: Motion.instant;
+        easing: ease-out;
+    }
+
+    Rectangle {
+        x: 0;
+        width: 3px;
+        height: root.selected ? parent.height * 0.6 : 0px;
+        background: Palette.cyan;
+
+        animate height {
+            duration: Motion.quick;
+            easing: ease-out;
+        }
+    }
+
+    // **L'altezza la decide il contenuto, non chi scrive la riga.**
+    //
+    // Fino al 2026-08-18 ogni chiamante dichiarava un'altezza fissa, e chi la
+    // scriveva doveva indovinare la somma di: il riempimento di questo
+    // componente (12px sopra e 12 sotto), quello del proprio contenuto, la
+    // spaziatura fra le righe di testo e l'altezza delle righe stesse. Nessuno
+    // puo' indovinarla, e infatti la riga dell'account ne dichiarava 46 quando
+    // ne servivano una settantina: la seconda riga usciva TAGLIATA A META'
+    // DELLE LETTERE.
+    //
+    // Nessun test se ne accorgeva, e non poteva: i test contano i pixel che il
+    // programma DICHIARA, e 46 era coerente con se stesso. E' il terzo difetto
+    // di questa famiglia trovato guardando lo schermo.
+    contenuto := HorizontalLayout {
+        padding: Spacing.md;
+        padding-left: Spacing.lg;
+        spacing: Spacing.md;
+        @children
+    }
+
+    focus := FocusScope {
+        // Il fuoco lo da' esplicitamente il gestore `clicked` qui sotto. Senza
+        // questa riga, il primo clic su una riga non ancora a fuoco viene
+        // assorbito per prendere il fuoco e la riga non risulta scelta finche'
+        // non si clicca una seconda volta: e' la causa verificata della mancata
+        // selezione con un solo clic dell'incidente M3B del 2026-07-29, e va
+        // conservata qui perche' il componente sostituisce le righe che quel
+        // difetto lo avevano avuto.
+        focus-on-click: false;
+        enabled: !StationLock.engaged;
+        key-pressed(event) => {
+            if (event.text == Key.Return || event.text == " ") {
+                root.choose();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: !StationLock.engaged;
+        mouse-cursor: MouseCursor.pointer;
+        clicked => {
+            focus.focus();
+            root.choose();
+        }
+    }
+
+    // A postazione bloccata la riga non si sceglie da nessuna via (F-01).
+    function choose() {
+        if (StationLock.engaged) {
+            return;
+        }
+        root.chosen();
+    }
+
+    Rectangle {
+        background: transparent;
+        border-width: focus.has-focus ? Spacing.frame-width : 0px;
+        border-color: Palette.focus;
+        border-radius: Spacing.radius-row;
+    }
+
+    accessible-role: button;
+    accessible-label: root.name;
+    accessible-action-default => {
+        root.choose();
+    }
+}
+
+// ------------------------------------------------------------ StateBlock
+//
+// **Una sola forma per ogni momento in cui non c'e' nulla da mostrare**: vuoto,
+// caricamento, errore, servizio ridotto, senza rete, riconnessione, e capacita'
+// non presente in questa versione.
+//
+// Il riferimento approvato lo chiede esplicitamente in un componente solo: una
+// schermata che si inventa il proprio messaggio di vuoto **deriva**, e dopo
+// dieci schermate il prodotto parla con dieci voci diverse.
+//
+// # Le due regole che contano piu' della resa
+//
+// **`planned` NON e' `empty`.** Una capacita' che questa versione non ha lo
+// dice; non si traveste da «ancora nessun dato». Sono due affermazioni diverse
+// su cose diverse, e confonderle fa credere a chi guarda che basti aspettare.
+//
+// **Il dettaglio tecnico e' un'informazione separata.** Il messaggio dice la
+// conseguenza in lingua piana; `sqlite: database is locked` sta dietro «Mostra
+// il dettaglio tecnico». Mescolarli costringe l'operatore a leggere una cosa
+// che non gli serve per capire una cosa che gli serve.
+//
+// # Il colore non e' mai solo
+//
+// Ogni genere porta la **propria parola** accanto al colore, e il sottosistema
+// si nomina: un guasto in una parte non deve leggersi come il sistema intero
+// fermo.
+export enum StateKind {
+    empty,
+    loading,
+    error,
+    degraded,
+    offline,
+    reconnecting,
+    planned,
+}
+
+export component StateBlock inherits Rectangle {
+    in property <StateKind> kind: StateKind.empty;
+    in property <string> title;
+    // Lingua piana, la conseguenza per prima.
+    in property <string> message;
+    // La parte del sistema di cui si parla: «connessione Telegram», «archivio».
+    in property <string> subsystem;
+    // Testo tecnico. Non compare finche' non lo si chiede.
+    in property <string> detail;
+    in property <string> action-label;
+    // 0..100 per un avanzamento **misurato**. Negativo = nessuna barra: il
+    // prodotto non finge un avanzamento che non sa misurare, e preferisce dire
+    // a parole che cosa sta accadendo.
+    in property <float> progress: -1;
+    callback action-invoked();
+
+    property <bool> detail-shown: false;
+
+    // La parola che accompagna il colore. `empty` non ne ha: il titolo dice
+    // gia' che non c'e' nulla, e un'insegna «VUOTO» sarebbe rumore.
+    property <string> state-word:
+        root.kind == StateKind.loading ? @tr("CARICAMENTO") : root.kind == StateKind.error ? @tr("ERRORE") : root.kind == StateKind.degraded ? @tr("SERVIZIO RIDOTTO") : root.kind == StateKind.offline ? @tr("SENZA RETE") : root.kind == StateKind.reconnecting ? @tr("RICONNESSIONE") : root.kind == StateKind.planned ? @tr("NON ATTIVA IN QUESTA VERSIONE") : "";
+
+    property <color> accent:
+        root.kind == StateKind.error ? Palette.coral
+        : root.kind == StateKind.degraded || root.kind == StateKind.reconnecting ? Palette.amber
+        : root.kind == StateKind.loading ? Palette.cyan
+        : Palette.text-muted;
+
+    background: Palette.panel-raised;
+    border-radius: Spacing.radius-panel;
+    border-width: Spacing.hairline;
+    border-color: Palette.line-divider;
+
+    VerticalLayout {
+        padding: Spacing.xl;
+        spacing: Spacing.sm;
+        alignment: center;
+
+        // Parola di stato e sottosistema, monospaziate e spaziate.
+        if root.state-word != "": Text {
+            text: root.subsystem != "" ? root.state-word + " \u{00b7} " + root.subsystem : root.state-word;
+            color: root.accent;
+            font-family: Typography.mono;
+            font-size: Typography.eyebrow;
+            font-weight: Typography.regular;
+            letter-spacing: Typography.track-eyebrow;
+            horizontal-alignment: center;
+            vertical-stretch: 0;
+        }
+
+        Text {
+            text: root.title;
+            color: Palette.text;
+            font-family: Typography.core;
+            font-size: Typography.section-title;
+            font-weight: Typography.medium;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            vertical-stretch: 0;
+        }
+
+        if root.message != "": Text {
+            text: root.message;
+            color: Palette.text-muted;
+            font-family: Typography.core;
+            font-size: Typography.body-secondary;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            vertical-stretch: 0;
+        }
+
+        // Avanzamento **misurato**, mai indeterminato.
+        if root.progress >= 0: Rectangle {
+            height: 4px;
+            vertical-stretch: 0;
+            background: Palette.chart-track;
+
+            Rectangle {
+                x: 0;
+                width: parent.width * min(max(root.progress, 0), 100) / 100;
+                height: parent.height;
+                background: root.accent;
+            }
+        }
+
+        if root.action-label != "": HorizontalLayout {
+            vertical-stretch: 0;
+            alignment: center;
+            HudButton {
+                label: root.action-label;
+                clicked => {
+                    root.action-invoked();
+                }
+            }
+        }
+
+        // Il dettaglio tecnico, dietro una richiesta esplicita.
+        if root.detail != "": VerticalLayout {
+            spacing: Spacing.xs;
+            vertical-stretch: 0;
+
+            disclosure := Rectangle {
+                height: 22px;
+                horizontal-stretch: 0;
+                background: transparent;
+
+                Text {
+                    text: root.detail-shown ? @tr("Nascondi il dettaglio tecnico") : @tr("Mostra il dettaglio tecnico");
+                    color: touch.has-hover ? Palette.focus : Palette.cyan;
+                    font-family: Typography.core;
+                    font-size: Typography.body-secondary;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+
+                // Dichiarato PRIMA di `touch`: in Slint l'ultimo elemento
+                // riceve per primo gli eventi del puntatore, e con il
+                // `FocusScope` sopra il primo clic servirebbe solo a spostare
+                // il fuoco.
+                focus := FocusScope {
+                    key-pressed(event) => {
+                        if (event.text == Key.Return || event.text == " ") {
+                            root.detail-shown = !root.detail-shown;
+                            return accept;
+                        }
+                        return reject;
+                    }
+                }
+
+                touch := TouchArea {
+                    mouse-cursor: MouseCursor.pointer;
+                    clicked => {
+                        focus.focus();
+                        root.detail-shown = !root.detail-shown;
+                    }
+                }
+
+                Rectangle {
+                    background: transparent;
+                    border-width: focus.has-focus ? 2px : 0px;
+                    border-color: Palette.focus;
+                    border-radius: Spacing.radius-row;
+                }
+
+                accessible-role: button;
+                accessible-label: root.detail-shown ? @tr("Nascondi il dettaglio tecnico") : @tr("Mostra il dettaglio tecnico");
+                accessible-action-default => {
+                    root.detail-shown = !root.detail-shown;
+                }
+            }
+
+            if root.detail-shown: Rectangle {
+                background: Palette.panel-inset;
+                border-radius: Spacing.radius-row;
+                vertical-stretch: 0;
+
+                HorizontalLayout {
+                    padding: Spacing.md;
+                    Text {
+                        text: root.detail;
+                        color: Palette.text-muted;
+                        font-family: Typography.mono;
+                        font-size: Typography.technical;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+    }
+
+    // Letto in una volta sola: chi ascolta riceve stato, sottosistema, titolo e
+    // messaggio come una frase, non come quattro frammenti da ricomporre.
+    accessible-role: text;
+    accessible-label: (root.state-word != "" ? root.state-word + ". " : "") + (root.subsystem != "" ? root.subsystem + ". " : "") + root.title + (root.message != "" ? ". " + root.message : "");
+}
+
+// ---------------------------------------------------------------- Banner
+//
+// Fascia di messaggio. Il tono ne decide colore e fondo; la parola resta
+// leggibile in ogni caso.
+export component Banner inherits Rectangle {
+    in property <string> message;
+    in property <Tone> tone: Tone.info;
+
+    vertical-stretch: 0;
+    border-radius: Spacing.radius-row;
+    // Una fascia di messaggio si distingue gia' dal proprio fondo tinto: il
+    // bordo la rifinisce, non la delimita.
+    border-width: Spacing.hairline;
+
+    property <color> ink:
+        root.tone == Tone.success ? Palette.green
+        : root.tone == Tone.warning ? Palette.amber
+        : root.tone == Tone.danger ? Palette.coral
+        : Palette.cyan;
+
+    background:
+        root.tone == Tone.success ? Palette.success-surface
+        : root.tone == Tone.warning ? Palette.warning-surface
+        : root.tone == Tone.danger ? Palette.danger-surface
+        : Palette.info-surface;
+
+    border-color: root.ink;
+
+    VerticalLayout {
+        padding: Spacing.md;
+
+        Text {
+            text: root.message;
+            color: Palette.text;
+            font-size: Typography.body-secondary;
+            wrap: word-wrap;
+        }
+    }
+
+    accessible-role: text;
+    accessible-label: root.message;
+}
+
+// Fasce nominate. Esistono come componenti a se' perche' il nome dice il tono
+// al punto di impiego: `ErrorBanner` si legge meglio di `Banner` con un
+// argomento, e non si sbaglia passando il tono sbagliato.
+export component ErrorBanner inherits Banner {
+    tone: Tone.danger;
+}
+
+export component InfoBanner inherits Banner {
+    tone: Tone.info;
+}
+
+// -------------------------------------------------------------- HudInput
+//
+// Il campo di testo del prodotto. Sostituisce `LineEdit` di libreria, che
+// prendeva lo stile da `fluent-dark` e restava **grigio dentro un'interfaccia
+// blu**: era il limite dichiarato di MP-15B, e questo lo chiude.
+//
+// Non e' un tema applicato a un controllo altrui: i controlli di libreria non
+// espongono i propri colori (in Slint 1.17 le proprieta' del `Palette` di
+// `std-widgets` sono di sola lettura), quindi l'unica via era costruirlo. E'
+// costruito sull'elemento `TextInput`, che e' l'elemento di base su cui poggia
+// anche `LineEdit`: la modifica riguarda l'aspetto e la cornice, non la
+// gestione del testo.
+//
+// **Nessuna `TouchArea` e nessun `FocusScope`**, e non e' una dimenticanza:
+// `TextInput` gestisce da se' il puntatore, il cursore, la selezione e il
+// fuoco. Aggiungerne uno sopra intercetterebbe i click e impedirebbe di
+// posizionare il cursore con il mouse.
+export component HudInput inherits Rectangle {
+    // Il nome che una tecnologia assistiva pronuncia. E' il CAMPO, mai il
+    // valore: un'etichetta presa dal contenuto farebbe leggere ad alta voce
+    // cio' che il campo mascherato esiste per non mostrare.
+    in property <string> label;
+    in property <string> description;
+    // Il testo segnaposto sparisce appena si scrive: da solo non e'
+    // un'etichetta, ed e' il motivo per cui `label` e' una proprieta' distinta.
+    in property <string> placeholder;
+    in property <bool> enabled: true;
+    // Campo mascherato. E' una proprieta' booleana e non il tipo di input
+    // grezzo perche' da questa scelta dipende anche che cosa il campo espone
+    // alle tecnologie assistive, e le due cose non devono poter divergere.
+    in property <bool> masked: false;
+    // Il campo della schermata di blocco lo dichiara: e' il solo che resta vivo
+    // a postazione bloccata (F-01).
+    in property <bool> lock-surface: false;
+    // Un campo da leggere e copiare, non da scrivere: il collegamento fornito
+    // da Telegram (CONTEXT-02, ADR-0165).
+    in property <bool> read-only: false;
+    in-out property <string> value <=> input.text;
+    out property <bool> has-focus: input.has-focus;
+    callback edited();
+    callback accepted();
+
+    // Se il campo risponde adesso.
+    property <bool> live: root.enabled && (!StationLock.engaged || root.lock-surface);
+
+    public function select-all() {
+        input.select-all();
+    }
+
+    // Copia negli appunti tutto il testo del campo, con la copia del campo
+    // stesso: nessuna dipendenza nuova (ADR-0165, decisione 2).
+    public function copy-all() {
+        input.select-all();
+        input.copy();
+    }
+
+    height: 34px;
+    min-width: 96px;
+    vertical-stretch: 0;
+    border-radius: Spacing.radius-row;
+    border-width: Spacing.hairline;
+    // Il campo attivo porta la cornice viva, gli altri quella spenta: e' come
+    // si legge dove si sta scrivendo senza contare i campi. `frame-dim` vale
+    // 3,15 contro il pannello e regge la soglia che la norma chiede a cio' che
+    // identifica un componente.
+    border-color: !root.enabled
+        ? Palette.line-divider
+        : (input.has-focus ? Palette.frame : Palette.frame-dim);
+    // Un campo di testo e' un INCASSO, non una superficie sollevata: si
+    // distingue dal pannello per essere piu' scuro, come ogni superficie in cui
+    // si scrive.
+    background: root.enabled ? Palette.panel-inset : Palette.panel;
+    forward-focus: input;
+    clip: true;
+
+    animate border-color {
+        duration: Motion.instant;
+        easing: ease-out;
+    }
+
+    field := Rectangle {
+        x: Spacing.sm;
+        width: parent.width - 2 * Spacing.sm;
+        height: 100%;
+        background: transparent;
+
+        Text {
+            width: 100%;
+            height: 100%;
+            vertical-alignment: center;
+            text: (root.value == "" && input.preedit-text == "") ? root.placeholder : "";
+            font-size: Typography.body;
+            color: Palette.text-disabled;
+            // Il segnaposto non e' un elemento a se' per chi ascolta la
+            // schermata: il nome del campo lo dichiara il campo.
+            accessible-role: none;
+        }
+
+        input := TextInput {
+            // Il testo scorre sotto una finestra fissa quando supera la
+            // larghezza del campo. Senza questo, il cursore uscirebbe dal
+            // riquadro e si scriverebbe alla cieca.
+            property <length> shift;
+
+            x: min(0px, max(parent.width - self.width - self.text-cursor-width, self.shift));
+            width: max(parent.width - self.text-cursor-width, self.preferred-width);
+            height: 100%;
+            vertical-alignment: center;
+            single-line: true;
+            enabled: root.enabled;
+            read-only: root.read-only;
+            input-type: root.masked ? InputType.password : InputType.text;
+            font-size: Typography.body;
+            color: root.enabled ? Palette.text : Palette.text-disabled;
+            selection-background-color: Palette.selected;
+            selection-foreground-color: Palette.text;
+            // L'accessibilita' la dichiara il componente, una volta sola: due
+            // elementi che si annunciano entrambi verrebbero letti due volte.
+            accessible-role: none;
+
+            cursor-position-changed(cursor) => {
+                if (cursor.x + self.shift < Spacing.sm) {
+                    self.shift = -cursor.x + Spacing.sm;
+                } else if (cursor.x + self.shift > parent.width - Spacing.sm - self.text-cursor-width) {
+                    self.shift = parent.width - cursor.x - Spacing.sm - self.text-cursor-width;
+                }
+            }
+
+            edited => {
+                if (!root.live) {
+                    return;
+                }
+                Activity.touched();
+                root.edited();
+            }
+
+            accepted => {
+                if (!root.live) {
+                    return;
+                }
+                Activity.touched();
+                root.accepted();
+            }
+        }
+
+        // ------------------------------------------------ menu contestuale
+        //
+        // Taglia, copia, incolla e seleziona tutto al tasto destro.
+        //
+        // Non e' una comodita': il 2026-08-19, durante il pilot, l'operatore
+        // ha riferito di non riuscire a incollare in un campo. Un campo dove
+        // non si puo' incollare un indirizzo o una denominazione lunga
+        // costringe a ridigitare, e chi ridigita sbaglia.
+        //
+        // Le voci chiamano le funzioni del `TextInput`, che sono le stesse
+        // che usano le scorciatoie da tastiera: non c'e' un secondo percorso
+        // da tenere allineato.
+        ContextMenuArea {
+            enabled: root.live;
+
+            Menu {
+                MenuItem {
+                    title: @tr("Taglia");
+                    // SU UN CAMPO MASCHERATO NON SI COPIA E NON SI TAGLIA.
+                    // Il campo esiste per non mostrare il proprio valore;
+                    // metterlo negli appunti lo consegnerebbe a qualunque
+                    // programma li legga, e sarebbe una perdita peggiore di
+                    // quella che la mascheratura evita.
+                    // A postazione bloccata nessuna voce agisce: il menu e' una
+                    // finestrella a parte, e un menu aperto quando il blocco
+                    // scatta resterebbe sopra il blocco (F-01).
+                    enabled: root.live && !root.masked;
+                    activated => {
+                        if (!root.live) {
+                            return;
+                        }
+                        Activity.touched();
+                        input.cut();
+                        root.edited();
+                    }
+                }
+                MenuItem {
+                    title: @tr("Copia");
+                    enabled: root.live && !root.masked;
+                    activated => {
+                        if (!root.live) {
+                            return;
+                        }
+                        Activity.touched();
+                        input.copy();
+                    }
+                }
+                MenuItem {
+                    title: @tr("Incolla");
+                    enabled: root.live;
+                    activated => {
+                        if (!root.live) {
+                            return;
+                        }
+                        Activity.touched();
+                        input.paste();
+                        // `paste()` non emette `edited`: senza questa riga
+                        // chi ascolta il campo non saprebbe che e' cambiato.
+                        root.edited();
+                    }
+                }
+                MenuSeparator { }
+                MenuItem {
+                    title: @tr("Seleziona tutto");
+                    enabled: root.live;
+                    activated => {
+                        if (!root.live) {
+                            return;
+                        }
+                        Activity.touched();
+                        input.select-all();
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        background: transparent;
+        border-width: input.has-focus ? 2px : 0px;
+        border-color: Palette.focus;
+        border-radius: Spacing.radius-row;
+    }
+
+    accessible-role: text-input;
+    accessible-label: root.label;
+    accessible-description: root.description;
+    accessible-enabled: root.live;
+    // Un campo mascherato non espone il proprio contenuto, e non e' una
+    // formalita': `accessible-value` e' cio' che una tecnologia assistiva
+    // legge ad alta voce. Se lo esponesse, la maschera proteggerebbe dallo
+    // sguardo di chi passa e non dall'orecchio di chi e' nella stanza.
+    accessible-value: root.masked ? "" : root.value;
+}
+
+// ------------------------------------------------------------- TextField
+//
+// Un `HudInput` con l'etichetta sopra. E' la forma con cui i campi compaiono
+// dentro un modulo.
+export component TextField inherits VerticalLayout {
+    in property <string> label;
+    in property <string> placeholder;
+    in property <bool> enabled: true;
+    in-out property <string> value <=> field.value;
+    callback edited();
+
+    spacing: Spacing.xs;
+
+    Text {
+        text: root.label;
+        color: Palette.text-muted;
+        font-size: Typography.group-label;
+        font-weight: Typography.medium;
+    }
+
+    field := HudInput {
+        // Il campo ha un'etichetta PROPRIA e non si affida al testo segnaposto,
+        // che sparisce appena si scrive: da solo non e' un'etichetta, e chi non
+        // vede il modulo resterebbe senza.
+        label: root.label;
+        placeholder: root.placeholder;
+        enabled: root.enabled;
+        edited => {
+            root.edited();
+        }
+    }
+}
+
+// ----------------------------------------------------------- SecretField
+//
+// Componente a se': maschera il contenuto, non lo mostra mai, e chi lo usa deve
+// svuotarlo dopo l'uso.
+export component SecretField inherits VerticalLayout {
+    in property <string> label;
+    in property <string> placeholder;
+    in property <bool> enabled: true;
+    in-out property <string> value <=> field.value;
+    callback accepted();
+
+    spacing: Spacing.xs;
+
+    Text {
+        text: root.label;
+        color: Palette.text-muted;
+        font-size: Typography.group-label;
+        font-weight: Typography.medium;
+    }
+
+    field := HudInput {
+        // L'etichetta nomina il CAMPO, mai il valore. E' il nome che una
+        // tecnologia assistiva pronuncia ad alta voce: se venisse dal
+        // contenuto, un segreto verrebbe letto a voce alta a chiunque sia
+        // nella stanza.
+        label: root.label;
+        placeholder: root.placeholder;
+        enabled: root.enabled;
+        masked: true;
+        accepted => {
+            root.accepted();
+        }
+    }
+}
+
+// -------------------------------------------------------------- HudCheck
+//
+// La casella di spunta del prodotto, al posto di `CheckBox` di libreria.
+//
+// Lo stato **non si distingue soltanto per il colore**: la casella spuntata
+// porta un segno di spunta, quella vuota no. Un riquadro che cambia solo tono
+// non dice nulla a chi non distingue i toni, e nulla a chi guarda uno schermo
+// in pieno sole.
+export component HudCheck inherits Rectangle {
+    in property <string> text;
+    in property <string> description;
+    in property <bool> enabled: true;
+    in-out property <bool> checked;
+    callback toggled();
+
+    // Acceso, e non coperto dal blocco della postazione (F-01).
+    property <bool> live: root.enabled && !StationLock.engaged;
+
+    height: 26px;
+    min-width: 20px + Spacing.sm + caption.preferred-width;
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    background: transparent;
+
+    function toggle() {
+        if (!root.live) {
+            return;
+        }
+        Activity.touched();
+        root.checked = !root.checked;
+        root.toggled();
+    }
+
+    box := Rectangle {
+        x: 0;
+        y: (root.height - self.height) / 2;
+        width: 20px;
+        height: 20px;
+        border-radius: Spacing.xs;
+        border-width: Spacing.hairline;
+        border-color: !root.enabled
+            ? Palette.line-divider
+            : (root.checked ? Palette.frame : Palette.frame-dim);
+        background: !root.enabled
+            ? Palette.panel
+            : (root.checked
+                ? Palette.frame-dim
+                : (touch.has-hover ? Palette.selected : Palette.panel-inset));
+
+        animate background, border-color {
+            duration: Motion.instant;
+            easing: ease-out;
+        }
+
+        Text {
+            text: root.checked ? "\u{2713}" : "";
+            width: 100%;
+            height: 100%;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            font-size: Typography.body;
+            font-weight: Typography.medium;
+            color: root.enabled ? Palette.text : Palette.text-disabled;
+            accessible-role: none;
+        }
+    }
+
+    caption := Text {
+        x: box.width + Spacing.sm;
+        width: root.width - box.width - Spacing.sm;
+        height: root.height;
+        vertical-alignment: center;
+        text: root.text;
+        font-size: Typography.body;
+        color: root.enabled ? Palette.text : Palette.text-disabled;
+        wrap: no-wrap;
+        accessible-role: none;
+    }
+
+    focus := FocusScope {
+        enabled: root.live;
+        key-pressed(event) => {
+            if (event.text == Key.Return || event.text == " ") {
+                root.toggle();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.live;
+        mouse-cursor: root.enabled ? MouseCursor.pointer : MouseCursor.default;
+        clicked => {
+            focus.focus();
+            root.toggle();
+        }
+    }
+
+    Rectangle {
+        x: 0;
+        y: (root.height - self.height) / 2;
+        width: box.width;
+        height: box.height;
+        background: transparent;
+        border-width: focus.has-focus ? 2px : 0px;
+        border-color: Palette.focus;
+        border-radius: Spacing.xs;
+    }
+
+    accessible-role: checkbox;
+    accessible-label: root.text;
+    accessible-description: root.description;
+    accessible-checkable: true;
+    accessible-checked: root.checked;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        root.toggle();
+    }
+}
+
+// ------------------------------------------------------------- HudScroll
+//
+// L'area scorrevole, al posto di `ScrollView` di libreria.
+//
+// La barra di `ScrollView` era la superficie grigia piu' visibile
+// dell'interfaccia: compare in tredici schermate ed e' l'unica cosa che si
+// muove mentre si legge.
+//
+// Si scorre con la **rotellina**. La barra e' un indicatore di posizione e non
+// si trascina: renderla trascinabile richiederebbe un bersaglio largo
+// abbastanza da rubare spazio al contenuto.
+//
+// **Limite dichiarato:** un'area che non contiene comandi non si scorre da
+// tastiera. Dove ci sono righe o campi, il Tab li raggiunge; dove c'e' solo
+// testo lungo, serve la rotellina. Aggiungere un `FocusScope` per ogni area
+// scorrevole metterebbe tredici fermate in piu' nel percorso del Tab, e chi
+// usa la tastiera pagherebbe su ogni schermata un vantaggio che serve su
+// poche.
+export component HudScroll inherits Rectangle {
+    // Nessuna proprieta' che non governi qualcosa. Aveva un `enabled`,
+    // ereditato per simmetria con la `ScrollView` di libreria, che dopo il
+    // passaggio a `interactive: false` non governava piu' nulla: nessun
+    // chiamante lo impostava e nessun comportamento vi dipendeva. Una
+    // proprieta' che non fa niente e' peggio di una che manca, perche' chi la
+    // legge crede di avere una leva.
+
+    background: transparent;
+    min-height: 40px;
+    preferred-height: 100%;
+    preferred-width: 100%;
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+
+    // Larghezza della barra. E' una costante e non una proprieta' calcolata, ed
+    // e' una scelta obbligata: far dipendere la larghezza della barra dal fatto
+    // che ci sia da scorrere crea un anello - la barra decide quanto spazio
+    // resta al contenuto, il contenuto decide se serve la barra - e Slint lo
+    // rifiuta compilando. La barra occupa sempre il suo posto e compare quando
+    // serve.
+    private property <length> bar: 6px;
+
+    // Lo scorrimento, per chi deve portare in vista un elemento: il tour
+    // guidato (TOUR-01) lo usa per mostrare una voce del menu rimasta fuori.
+    in-out property <length> scroll-y <=> flick.viewport-y;
+    out property <length> content-height: flick.viewport-height;
+    out property <length> view-height: flick.height;
+
+    flick := Flickable {
+        width: parent.width - root.bar - Spacing.xs;
+        height: 100%;
+
+        // `interactive: false`, cioe' **niente trascinamento del contenuto**, ed
+        // e' la stessa scelta che fa la `ScrollView` di Slint.
+        //
+        // Con il trascinamento attivo il `Flickable` intercetta la pressione del
+        // mouse per decidere se sia un clic o l'inizio di uno scorrimento, e la
+        // consegna ai figli solo dopo. Su elenchi fatti di righe che si
+        // scelgono - lo Storico, le Fonti, i Dizionari - vuol dire clic che
+        // arrivano in ritardo o non arrivano.
+        //
+        // E' la stessa famiglia del difetto gia' visto in questo progetto con
+        // `FocusScope` sopra `TouchArea`: il primo clic consumato da qualcos'altro
+        // e l'operatore che preme due volte senza sapere perche'. La rotellina
+        // funziona comunque: non dipende da questa proprieta'.
+        interactive: false;
+
+        // Si scorre in verticale soltanto: un contenuto piu' largo della
+        // finestra si riporta a capo, non si va a cercare di lato.
+        viewport-width: self.width;
+
+        @children
+    }
+
+    // La barra si vede solo quando c'e' qualcosa da scorrere: una barra sempre
+    // visibile su un elenco di tre righe dice che manca del contenuto che non
+    // esiste.
+    track := Rectangle {
+        x: parent.width - root.bar;
+        width: root.bar;
+        height: 100%;
+        background: Palette.panel-inset;
+        border-radius: root.bar / 2;
+        opacity: flick.viewport-height > flick.height ? 1.0 : 0.0;
+
+        animate opacity {
+            duration: Motion.quick;
+            easing: ease-out;
+        }
+
+        Rectangle {
+            width: parent.width;
+            // Mai piu' corta di venti pixel: su un elenco molto lungo il
+            // rapporto esatto darebbe un segno di due pixel, che non si vede.
+            height: max(20px, parent.height * (flick.height / max(flick.viewport-height, 1px)));
+            y: (parent.height - self.height)
+                * (-flick.viewport-y / max(flick.viewport-height - flick.height, 1px));
+            background: Palette.frame-dim;
+            border-radius: root.bar / 2;
+        }
+    }
+}
+
+// ------------------------------------------------------------- HudSelect
+//
+// La scelta fra alternative, al posto di `ComboBox` di libreria.
+//
+// L'elenco si apre in un `PopupWindow` e si chiude con un clic fuori o con
+// Esc. Le frecce cambiano la scelta **senza aprire l'elenco**: chi usa la
+// tastiera non deve aprire una finestra per passare da un'opzione alla
+// successiva.
+export component HudSelect inherits Rectangle {
+    in property <[string]> model;
+    in property <string> label;
+    in property <string> description;
+    in property <bool> enabled: true;
+    in-out property <int> current-index: 0;
+    out property <string> current-value: root.model[root.current-index];
+    callback selected(index: int);
+
+    // L'altezza dell'elenco aperto: trenta pixel per voce piu' i margini, fino
+    // a un tetto di sette voci e mezzo. Il mezzo e' voluto: una voce tagliata
+    // a meta' dice che sotto ce n'e' dell'altro meglio di qualunque indicatore.
+    //
+    // Le voci non sono un numero fisso: il selettore dei monitoraggi ne ha una
+    // per sessione condotta, e in un ufficio che usa il prodotto per mesi
+    // diventano decine. Senza un tetto il riquadro uscirebbe dallo schermo.
+    //
+    // **Questa misura va data alla finestrella, non solo allo scorrimento che
+    // contiene** (SIM3-01). Finche' la stava solo sullo scorrimento, il
+    // `PopupWindow` - che non ne aveva una - prendeva l'altezza preferita del
+    // suo contenuto, e un `Rectangle` non la eredita dai figli: la finestrella
+    // restava alta quanto il margine. Le voci si disegnavano lo stesso, fuori
+    // dal riquadro e senza sfondo, ma per Windows erano fuori dall'elenco: il
+    // clic su una voce era un «clic fuori», e chiudeva l'elenco senza scegliere.
+    // Con la tastiera funzionava, e nessuna prova cliccava.
+    private property <length> list-height: min(232px, root.model.length * 30px + 2 * Spacing.xs);
+
+    // Acceso, e non coperto dal blocco della postazione (F-01). Se il blocco
+    // scatta con l'elenco aperto, l'elenco si chiude: e' una finestrella a
+    // parte, e il contenuto nascosto sotto il blocco non la nasconderebbe.
+    property <bool> live: root.enabled && !StationLock.engaged;
+    changed live => {
+        if (!self.live) {
+            root.list-open = false;
+            list.close();
+        }
+    }
+
+    height: 34px;
+    min-width: 96px;
+    // La larghezza preferita non segue il valore scelto (F-17): seguendolo, una
+    // voce corta stringeva il campo accanto (nel Grafo da 259 a 96 px). Chi
+    // vuole un'altra misura la dichiara.
+    preferred-width: 220px;
+    vertical-stretch: 0;
+    border-radius: Spacing.radius-row;
+    border-width: Spacing.hairline;
+    border-color: !root.enabled
+        ? Palette.line-divider
+        : (focus.has-focus ? Palette.frame : Palette.frame-dim);
+    background: !root.enabled
+        ? Palette.panel
+        : (touch.has-hover ? Palette.selected : Palette.panel-raised);
+    forward-focus: focus;
+
+    animate background, border-color {
+        duration: Motion.instant;
+        easing: ease-out;
+    }
+
+    function choose(index: int) {
+        if (!root.live || root.model.length == 0) {
+            return;
+        }
+        // La scelta si muove dentro l'elenco e non oltre: una freccia premuta
+        // sull'ultima voce non deve riportare alla prima, perche' chi tiene
+        // premuto perderebbe il punto in cui si trova.
+        root.current-index = Math.max(0, Math.min(index, root.model.length - 1));
+        Activity.touched();
+        root.selected(root.current-index);
+    }
+
+    HorizontalLayout {
+        padding-left: Spacing.sm;
+        padding-right: Spacing.sm;
+        spacing: Spacing.sm;
+
+        Text {
+            text: root.current-value;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+            font-size: Typography.body;
+            color: root.enabled ? Palette.text : Palette.text-disabled;
+            accessible-role: none;
+        }
+
+        // Freccia verso il basso: dice che sotto c'e' altro, ed e' l'unico
+        // segno che distingue questo campo da un'etichetta.
+        //
+        // E' **disegnata**, non scritta. Era il carattere `\u{25BE}`, e nel
+        // font di sistema di Windows quel carattere NON C'E': al suo posto
+        // compariva il rettangolo vuoto del glifo mancante, su ogni elenco a
+        // discesa del prodotto. Nessun test poteva accorgersene - la stringa
+        // era corretta, il componente si disegnava, il colore era giusto - e
+        // non se n'e' accorto nemmeno l'avvio di prova: si vede solo
+        // guardando un'immagine della finestra.
+        //
+        // Un tracciato non ha questo problema: non dipende da che cosa il
+        // sistema abbia installato.
+        Rectangle {
+            width: 14px;
+            horizontal-stretch: 0;
+            background: transparent;
+
+            Path {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: 11px;
+                height: 7px;
+                viewbox-width: 11;
+                viewbox-height: 7;
+                commands: "M 1 1.5 L 5.5 6 L 10 1.5";
+                stroke: root.enabled ? Palette.cyan : Palette.text-disabled;
+                stroke-width: 1.6px;
+                fill: transparent;
+                accessible-role: none;
+            }
+        }
+    }
+
+    // La voce scelta quando l'elenco si e' aperto: Esc la rimette (F-17). Le
+    // frecce scelgono mentre si scorre, e senza questo Esc chiudeva lasciando
+    // l'ultima voce attraversata.
+    property <int> index-at-open: 0;
+
+    // Apre l'elenco, se il campo risponde.
+    function open() {
+        if (!root.live) {
+            return;
+        }
+        Activity.touched();
+        root.index-at-open = root.current-index;
+        root.list-open = true;
+        list.show();
+    }
+
+    // Se l'elenco è stato aperto e non ancora chiuso da un tasto: serve alla
+    // riserva di Esc qui sotto. Un clic fuori lo chiude senza dirlo, e allora
+    // resta vero: il primo Esc dopo non trova nulla da chiudere, e lo dice
+    // accettando il tasto una volta sola.
+    property <bool> list-open: false;
+
+    focus := FocusScope {
+        enabled: root.live;
+        key-pressed(event) => {
+            if (event.text == Key.UpArrow) {
+                root.choose(root.current-index - 1);
+                return accept;
+            }
+            if (event.text == Key.DownArrow) {
+                root.choose(root.current-index + 1);
+                return accept;
+            }
+            if (event.text == Key.Home) {
+                root.choose(0);
+                return accept;
+            }
+            if (event.text == Key.End) {
+                root.choose(root.model.length - 1);
+                return accept;
+            }
+            if (event.text == Key.Return || event.text == " ") {
+                root.open();
+                return accept;
+            }
+            // RISERVA PER ESC (CAPABILITY-AUDIT-02, CA02-09): se l'elenco aperto
+            // col mouse non ha preso il fuoco, Esc arriva qui. Chiudere un elenco
+            // già chiuso non fa nulla, e il tasto prosegue verso la pagina.
+            if (event.text == Key.Escape && root.list-open) {
+                if (root.current-index != root.index-at-open) {
+                    root.choose(root.index-at-open);
+                }
+                root.list-open = false;
+                list.close();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.live;
+        mouse-cursor: root.enabled ? MouseCursor.pointer : MouseCursor.default;
+        clicked => {
+            focus.focus();
+            root.open();
+        }
+    }
+
+    Rectangle {
+        background: transparent;
+        border-width: focus.has-focus ? 2px : 0px;
+        border-color: Palette.focus;
+        border-radius: Spacing.radius-row;
+    }
+
+    list := PopupWindow {
+        x: 0;
+        y: root.height + Spacing.xs;
+        width: root.width;
+        height: root.list-height;
+        close-policy: close-on-click-outside;
+        forward-focus: keys;
+
+        Rectangle {
+            background: Palette.panel-raised;
+            border-radius: Spacing.radius-row;
+            border-width: Spacing.hairline;
+            // Quando l'elenco aperto ha il fuoco, e' la sua cornice a dirlo.
+            // Senza, chi lo apre con la tastiera non saprebbe se i tasti stanno
+            // arrivando all'elenco o al campo sotto.
+            border-color: keys.has-focus ? Palette.focus : Palette.frame;
+
+            // L'elenco aperto si governa da qui: frecce per scorrere, Invio per
+            // confermare, Esc per chiudere. E' dichiarato PRIMA delle voci
+            // perche' in Slint l'elemento dichiarato per ultimo sta sopra e
+            // riceve per primo gli eventi del puntatore: invertendoli, il click
+            // su una voce verrebbe consumato dallo spostamento del fuoco.
+            keys := FocusScope {
+                // L'ELENCO PRENDE IL FUOCO QUANDO SI APRE (CA02-09): aperto col
+                // mouse, i tasti restavano al campo sotto, ed Esc non chiudeva.
+                init => {
+                    self.focus();
+                }
+                key-pressed(event) => {
+                    if (event.text == Key.UpArrow) {
+                        root.choose(root.current-index - 1);
+                        return accept;
+                    }
+                    if (event.text == Key.DownArrow) {
+                        root.choose(root.current-index + 1);
+                        return accept;
+                    }
+                    if (event.text == Key.Home) {
+                        root.choose(0);
+                        return accept;
+                    }
+                    if (event.text == Key.End) {
+                        root.choose(root.model.length - 1);
+                        return accept;
+                    }
+                    if (event.text == Key.Return) {
+                        root.list-open = false;
+                        list.close();
+                        focus.focus();
+                        return accept;
+                    }
+                    // Esc annulla: torna la voce che c'era all'apertura.
+                    if (event.text == Key.Escape) {
+                        if (root.current-index != root.index-at-open) {
+                            root.choose(root.index-at-open);
+                        }
+                        root.list-open = false;
+                        list.close();
+                        focus.focus();
+                        return accept;
+                    }
+                    return reject;
+                }
+            }
+
+            // L'elenco aperto non cresce oltre `list-height`, e scorre dentro.
+            HudScroll {
+                // L'altezza si **calcola** dalle voci invece di lasciarla
+                // dedurre al layout.
+                //
+                // `HudScroll` dichiara `preferred-height: 100%`, cioe' «quanto
+                // il mio contenitore»; dentro un riquadro che a sua volta si
+                // dimensiona sul contenuto, i due si rimandano la domanda. Il
+                // risultato non e' un errore di compilazione: e' un riquadro
+                // alto sempre uguale, o schiacciato al minimo, e ci si accorge
+                // solo aprendolo.
+                height: root.list-height;
+
+                VerticalLayout {
+                    padding: Spacing.xs;
+
+                    for option[index] in root.model: Rectangle {
+                        height: 30px;
+                        // Ogni voce e' una voce d'elenco per un lettore di schermo
+                        // (F-17): prima l'albero non le mostrava.
+                        accessible-role: list-item;
+                        accessible-label: option;
+                        accessible-item-selectable: true;
+                        accessible-item-selected: index == root.current-index;
+                        accessible-item-index: index;
+                        accessible-item-count: root.model.length;
+                        accessible-action-default => {
+                            root.choose(index);
+                            root.list-open = false;
+                            list.close();
+                        }
+                        border-radius: Spacing.xs;
+                        background: index == root.current-index
+                            ? Palette.selected
+                            : (row.has-hover ? Palette.accent-surface : transparent);
+
+                        HorizontalLayout {
+                            padding-left: Spacing.sm;
+                            padding-right: Spacing.sm;
+
+                            Text {
+                                text: option;
+                                vertical-alignment: center;
+                                overflow: elide;
+                                font-size: Typography.body;
+                                color: Palette.text;
+                                accessible-role: none;
+                            }
+                        }
+
+                        // La singola voce non ha un `FocusScope` proprio, e non
+                        // e' una dimenticanza: il fuoco della tastiera sta
+                        // sull'elenco (`keys`), che scorre con le frecce e
+                        // conferma con Invio. Darlo a ogni voce costringerebbe a
+                        // percorrere l'elenco con il Tab per uscirne.
+                        row := TouchArea {
+                            clicked => {
+                                root.choose(index);
+                                root.list-open = false;
+                                list.close();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    accessible-role: combobox;
+    accessible-label: root.label;
+    accessible-description: root.description;
+    accessible-value: root.current-value;
+    accessible-enabled: root.live;
+    accessible-action-default => {
+        root.open();
+    }
+}
+
+// ------------------------------------------------------------- HudNumber
+//
+// Il campo numerico, al posto di `SpinBox` di libreria.
+//
+// Il valore si scrive **e** si cambia con due comandi. I comandi non sono un
+// ornamento: un intervallo da 1 a 4 si percorre piu' in fretta premendo due
+// volte che digitando, e chi ha difficolta' motorie preferisce un bersaglio
+// grande a una casella di testo.
+export component HudNumber inherits Rectangle {
+    in property <string> label;
+    in property <string> description;
+    in property <bool> enabled: true;
+    in property <int> minimum: 0;
+    in property <int> maximum: 100;
+    in property <int> step: 1;
+    in-out property <int> value: 0;
+    callback changed(value: int);
+
+    height: 34px;
+    min-width: 140px;
+    vertical-stretch: 0;
+    horizontal-stretch: 0;
+    border-radius: Spacing.radius-row;
+    border-width: Spacing.hairline;
+    border-color: !root.enabled
+        ? Palette.line-divider
+        : (number.has-focus ? Palette.frame : Palette.frame-dim);
+    background: root.enabled ? Palette.panel-inset : Palette.panel;
+    forward-focus: number;
+
+    animate border-color {
+        duration: Motion.instant;
+        easing: ease-out;
+    }
+
+    function apply(candidate: int) {
+        if (!root.enabled || StationLock.engaged) {
+            return;
+        }
+        // Il valore si ferma agli estremi invece di rifiutarli: chi tiene
+        // premuto non deve accorgersi di aver superato il limite, deve
+        // trovarcisi sopra.
+        root.value = Math.max(root.minimum, Math.min(candidate, root.maximum));
+        Activity.touched();
+        root.changed(root.value);
+    }
+
+    // Il testo mostrato torna al valore ogni volta che il valore cambia, da
+    // qualunque parte venga il cambiamento. Serve perche' cio' che si digita e
+    // cio' che il campo vale sono due cose diverse: «12» digitato dove il
+    // massimo e' 4 deve tornare a leggersi «4», altrimenti il campo mostra un
+    // numero che non e' il proprio valore.
+    function show-value() {
+        number.text = root.value;
+    }
+
+    changed value => {
+        root.show-value();
+    }
+
+    HorizontalLayout {
+        padding-left: Spacing.sm;
+        padding-right: Spacing.xs;
+        spacing: Spacing.xs;
+
+        number := TextInput {
+            text: root.value;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            single-line: true;
+            enabled: root.enabled;
+            input-type: InputType.number;
+            font-size: Typography.body;
+            color: root.enabled ? Palette.text : Palette.text-disabled;
+            selection-background-color: Palette.selected;
+            selection-foreground-color: Palette.text;
+            accessible-role: none;
+
+            edited => {
+                if (self.text.is-float()) {
+                    root.apply(self.text.to-float());
+                    // Se il valore e' stato **ricondotto** agli estremi, il
+                    // testo va rimesso qui: `changed value` non scatta quando
+                    // il valore non cambia, e digitando 999999 su un massimo di
+                    // 480 il campo si fermava a 480 ma continuava a mostrare
+                    // 480999 - cioe' esattamente il numero che non e' il
+                    // proprio valore, quello che questo componente dichiara di
+                    // non voler mostrare. Trovato dal pilot, voce L8.
+                    //
+                    // Solo quando il ricondurre e' avvenuto: rimettere il testo
+                    // a ogni battuta riporterebbe il cursore in testa dopo ogni
+                    // cifra, e non si potrebbe piu' scrivere un numero.
+                    if (self.text.to-float() != root.value) {
+                        root.show-value();
+                    }
+                } else if (self.text != "") {
+                    // Il campo svuotato si lascia vuoto mentre si scrive: chi
+                    // cancella per riscrivere non deve vedersi rimettere una
+                    // cifra sotto le dita. Tutto il resto che non e' un numero
+                    // torna subito al valore.
+                    root.show-value();
+                }
+            }
+
+            accepted => {
+                root.show-value();
+            }
+
+            key-pressed(event) => {
+                if (event.text == Key.UpArrow) {
+                    root.apply(root.value + root.step);
+                    return accept;
+                }
+                if (event.text == Key.DownArrow) {
+                    root.apply(root.value - root.step);
+                    return accept;
+                }
+                return reject;
+            }
+        }
+
+        // I due comandi sono `HudButton`, non riquadri disegnati qui: cosi'
+        // portano gia' il fuoco da tastiera, l'anello, il ruolo e il nome, e
+        // non c'e' una seconda definizione di «comando» da tenere allineata.
+        HudButton {
+            label: "\u{2212}";
+            min-width: 30px;
+            enabled: root.enabled && root.value > root.minimum;
+            reason: @tr("Diminuisce {}", root.label);
+            clicked => {
+                root.apply(root.value - root.step);
+            }
+        }
+
+        HudButton {
+            label: "+";
+            min-width: 30px;
+            enabled: root.enabled && root.value < root.maximum;
+            reason: @tr("Aumenta {}", root.label);
+            clicked => {
+                root.apply(root.value + root.step);
+            }
+        }
+    }
+
+    Rectangle {
+        background: transparent;
+        border-width: number.has-focus ? 2px : 0px;
+        border-color: Palette.focus;
+        border-radius: Spacing.radius-row;
+    }
+
+    accessible-role: spinbox;
+    accessible-label: root.label;
+    accessible-description: root.description;
+    accessible-value: root.value;
+    accessible-value-minimum: root.minimum;
+    accessible-value-maximum: root.maximum;
+    accessible-value-step: root.step;
+    accessible-enabled: root.enabled && !StationLock.engaged;
+}
+
+// ------------------------------------------------------------ RadarPanel
+//
+// Indicatore di attivita' del monitoraggio. Gira SOLO mentre qualcosa e' in
+// corso: un indicatore che gira sempre smette di dire qualcosa.
+//
+// E' una METAFORA dell'attivita', non uno strumento di localizzazione, ed e' un
+// elemento SECONDARIO: il reticolo e' un piano astratto e non un territorio, la
+// spazzata non individua nulla nello spazio, e nessun punto rappresenta un
+// luogo. Il prodotto **non fa geolocalizzazione** - non ricava, non conserva e
+// non mostra la posizione di alcuna fonte, di alcun account o di alcun
+// contenuto - e nessun elemento dell'interfaccia deve suggerire il contrario
+// (DEC-126).
+//
+// Per la stessa ragione non esiste, e non deve essere introdotta, alcuna mappa
+// geografica: dichiarerebbe in forma grafica una capacita' che il software non
+// possiede.
+//
+// `running` va legato a uno stato REALE - monitoraggio attivo, account
+// controllati, nuovi messaggi, corrispondenze con i dizionari, notifiche o
+// anomalie - e non a un timer che gira per decorazione.
+export component RadarPanel inherits Rectangle {
+    in property <bool> running: false;
+    in property <string> caption;
+    in property <length> size: 96px;
+
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    width: root.size;
+    height: root.size;
+    // Il radar conserva un bordo pieno perche' e' un quadrante: il cerchio E'
+    // la sua forma, non una cornice che gli e' stata messa attorno.
+    background: Palette.panel-inset;
+    border-width: 2px;
+    border-color: root.running ? Palette.frame : Palette.line-divider;
+    border-radius: root.size / 2;
+
+    // Anelli concentrici. Tre, non uno: e' cio' che distingue uno strumento da
+    // un cerchio, e da fermo continua a dire «questo e' un radar» invece di
+    // sembrare un riquadro vuoto.
+    //
+    // Sono disegnati come cerchi cavi - un rettangolo con raggio pari a meta'
+    // del lato - e non come tracciati: a questa dimensione un `Path` con
+    // spessore sub-pixel si assottiglia in modo irregolare, un bordo no.
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.size * 0.72;
+        height: root.size * 0.72;
+        border-radius: self.width / 2;
+        background: transparent;
+        border-width: 1px;
+        border-color: Palette.line-divider;
+    }
+
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.size * 0.46;
+        height: root.size * 0.46;
+        border-radius: self.width / 2;
+        background: transparent;
+        border-width: 1px;
+        border-color: Palette.line-divider;
+    }
+
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.size * 0.20;
+        height: root.size * 0.20;
+        border-radius: self.width / 2;
+        background: transparent;
+        border-width: 1px;
+        border-color: Palette.line-divider;
+    }
+
+    // Assi.
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: root.size * 0.12;
+        width: 1px;
+        height: root.size * 0.76;
+        background: Palette.line-divider;
+    }
+
+    Rectangle {
+        x: root.size * 0.12;
+        y: (parent.height - self.height) / 2;
+        width: root.size * 0.76;
+        height: 1px;
+        background: Palette.line-divider;
+    }
+
+    // ---------------------------------------------------------- Spazzata
+    //
+    // Un radar vero non ha otto raggi che si accendono a turno: ha un settore
+    // luminoso che RUOTA e una coda che sfuma dietro di esso. Fino al
+    // 2026-08-19 qui c'erano otto raggi, e a schermo si vedeva battere a
+    // scatti — l'operatore lo ha descritto come «non si muove».
+    //
+    // # Perche' trentadue settori fissi e non uno che gira
+    //
+    // In Slint 1.17 un elemento non si puo' ruotare (la rotazione esiste solo
+    // su `Image` e `Text`). Si potrebbe ricalcolare la geometria a ogni
+    // fotogramma, ma sarebbe costruire trentadue stringhe sessanta volte al
+    // secondo per un quadrante di cento pixel.
+    //
+    // I settori sono quindi FISSI — la loro geometria dipende solo
+    // dall'indice, e si calcola una volta sola — e cio' che ruota e' la loro
+    // OPACITA'. Il risultato sullo schermo e' identico e il costo per
+    // fotogramma e' una sottrazione per settore.
+    //
+    // Sono settori PIENI e non raggi: due raggi vicini, al bordo del
+    // quadrante, si separano e disegnano una ruota di razze. Un settore pieno
+    // confina con il successivo, e la coda si legge come una sfumatura
+    // continua.
+    //
+    // # Perche' gira solo mentre si monitora
+    //
+    // Un radar che ruota mentre nessuno sta monitorando racconterebbe
+    // un'attivita' che non c'e'. Da fermo lo strumento respira — vedere
+    // l'anello esterno — e si legge «acceso, nessuna scansione».
+    // # Perche' un `Timer` e non `iteration-count: -1`
+    //
+    // La prima versione era `property <float> phase: ... ? 1.0 : 0.0` con
+    // `iteration-count: -1`, e il fascio restava **fermo, puntato in alto**.
+    //
+    // Il pannello del radar vive nella Dashboard, che si crea quando la si
+    // apre. Chi avvia un monitoraggio e poi torna alla Dashboard trova un
+    // pannello NUOVO, in cui `phase` nasce gia' al valore d'arrivo: non
+    // cambia mai, e un'animazione scatta solo su un CAMBIO. Non partiva.
+    //
+    // Da fermo o a regime il fascio finiva comunque puntato in alto - 0.0 e
+    // 1.0 sono lo stesso angolo, a un giro di distanza - e le due avarie si
+    // somigliavano al punto da essere indistinguibili a occhio.
+    //
+    // E' la SECONDA animazione di questo componente rotta allo stesso modo,
+    // dopo il respiro del nucleo. La regola che ne discende, e che una prova
+    // in `main.rs` ora sorveglia: **in questo prodotto un'animazione non si
+    // ripete da sola.** Se deve ripetersi, la muove un `Timer`.
+    //
+    // # Perche' i giri si contano invece di rimbalzare
+    //
+    // Capovolgere un valore fra 0 e 1 farebbe tornare la spazzata indietro a
+    // giri alterni, e un radar che inverte il verso non e' un radar. Il
+    // contatore CRESCE e basta; la parte frazionaria dice dove si trova il
+    // fascio nel giro corrente.
+    //
+    // Il contatore non torna mai a zero: azzerarlo richiederebbe un salto
+    // all'indietro proprio mentre si guarda. Cresce di uno ogni due secondi,
+    // e la precisione di un numero in virgola mobile a 32 bit regge un grado
+    // di errore dopo otto ore di scansione continua. E' un limite, ed e'
+    // scritto qui perche' qualcuno lo trovi invece di scoprirlo.
+    property <float> turns: 0.0;
+
+    // # Perche' a passi e non con un'animazione continua (PERF-02)
+    //
+    // Fino al 2026-11-09 il timer batteva un ottavo di giro e un `animate`
+    // lineare copriva l'intervallo: il valore cambiava a ogni fotogramma, e
+    // ogni fotogramma ridisegna l'INTERA finestra, non il solo quadrante. Il
+    // collaudo ha misurato il 22,6% di un core sulla Dashboard (OBS-PERF-1).
+    //
+    // Ora il timer fa il passo da solo, quaranta per giro: venti ridisegni al
+    // secondo invece di sessanta, e il fascio avanza di nove gradi per volta.
+    // Il moto resta un moto; un radar vero non e' piu' fluido di cosi'.
+    private property <int> sweep-steps: 40;
+
+    Timer {
+        interval: Motion.sweep / root.sweep-steps;
+        running: Appearance.motion-enabled && root.running;
+        triggered => {
+            root.turns += 1.0 / root.sweep-steps;
+        }
+    }
+
+    property <float> phase: Math.mod(root.turns, 1.0);
+
+    /// Ampiezza della coda, in giri: 0,25 = novanta gradi.
+    private property <float> tail: 0.25;
+    /// Raggio della spazzata, nelle unita' del riquadro di disegno.
+    private property <float> reach: 39.0;
+
+    for sector in 32: Path {
+        /// Dove comincia questo settore, in giri. Il quarto sottratto porta lo
+        /// zero in CIMA al quadrante: senza, la spazzata partirebbe da destra.
+        property <float> at: sector / 32.0;
+        property <angle> from-angle: (self.at - 0.25) * 360deg;
+        property <angle> to-angle: (self.at + 1.0 / 32.0 - 0.25) * 360deg;
+
+        /// Quanto dista questo settore DIETRO al fascio, in giri, contando la
+        /// ricucitura a fine giro. E' l'unica aritmetica che si ripete a ogni
+        /// fotogramma.
+        property <float> behind: root.phase - self.at >= 0.0
+            ? root.phase - self.at
+            : root.phase - self.at + 1.0;
+
+        width: 100%;
+        height: 100%;
+        viewbox-width: 100;
+        viewbox-height: 100;
+
+        commands: "M 50 50"
+            + " L " + (50 + root.reach * Math.cos(self.from-angle))
+            + " " + (50 + root.reach * Math.sin(self.from-angle))
+            + " A " + root.reach + " " + root.reach + " 0 0 1 "
+            + (50 + root.reach * Math.cos(self.to-angle))
+            + " " + (50 + root.reach * Math.sin(self.to-angle))
+            + " Z";
+
+        fill: Palette.green;
+        // Piena sotto il fascio, spenta alla fine della coda. Il valore di
+        // punta resta basso: un settore pieno al massimo dell'opacita'
+        // coprirebbe il reticolo, che e' cio' che rende il quadrante uno
+        // strumento invece di un cerchio verde.
+        opacity: root.running && self.behind < root.tail
+            ? 0.42 * (1.0 - self.behind / root.tail)
+            : 0.0;
+    }
+
+    // Il filo del fascio.
+    //
+    // Questo si', ricalcolato a ogni passo: e' UN tracciato, e senza di esso
+    // il bordo d'attacco seguirebbe i settori, undici gradi alla volta e
+    // fuori tempo con il passo — la coda sfuma e non si nota, il bordo netto
+    // invece si', ed e' proprio quello che l'occhio segue.
+    Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 100;
+        viewbox-height: 100;
+        commands: "M 50 50 L "
+            + (50 + root.reach * Math.cos((root.phase - 0.25) * 360deg))
+            + " " + (50 + root.reach * Math.sin((root.phase - 0.25) * 360deg));
+        stroke: Palette.green;
+        stroke-width: 2px;
+        opacity: root.running ? 0.95 : 0.0;
+    }
+
+    // ------------------------------------------------- respiro da fermo
+    //
+    // Da fermo il quadrante era immobile, e immobile si legge GUASTO. Ma un
+    // radar che RUOTA mentre nessuno monitora racconterebbe una scansione
+    // che non avviene, ed e' esattamente il genere di bugia che questo
+    // prodotto non si permette.
+    //
+    // Il compromesso non e' un compromesso: da fermo lo strumento RESPIRA -
+    // il nucleo si schiarisce e si spegne, lentamente - e respirare non
+    // significa scandagliare. Dice «acceso, nessuna scansione», che e'
+    // precisamente lo stato in cui si trova.
+    //
+    // # Perche' un `Timer` e non una proprieta' animata
+    //
+    // La prima versione era `property <float> breath: ... ? 1.0 : 0.0` con
+    // `iteration-count: -1`, e **non respirava affatto**. Un'animazione in
+    // Slint scatta quando il valore CAMBIA; da fermo quel valore vale gia'
+    // 1.0 alla prima valutazione, e non cambia mai piu'. Non partiva nulla.
+    //
+    // La spazzata invece funziona proprio perche' `running` cambia davvero
+    // quando un monitoraggio comincia: e' la differenza fra le due, e
+    // spiega perche' una sola delle due fosse rotta.
+    //
+    // Rilevato il 2026-08-20 guardando il prodotto: nessuna prova poteva
+    // accorgersene, perche' il valore ERA quello giusto — solo immobile.
+    //
+    // Fino al 2026-11-09 il timer capovolgeva il bersaglio a ogni battuta e
+    // un'animazione `ease-in-out` faceva il tragitto: sessanta ridisegni della
+    // finestra al secondo anche a riposo (PERF-02, vedere la spazzata). Ora il
+    // timer conta ventiquattro passi per ogni mezzo respiro, dieci al secondo,
+    // e il coseno da' la stessa andata e lo stesso ritorno.
+    private property <int> breath-steps: 24;
+    property <int> breath-step: 0;
+    property <float> breath: 0.5 - 0.5 * Math.cos(root.breath-step * 180deg / root.breath-steps);
+
+    Timer {
+        interval: Motion.breath / root.breath-steps;
+        // Fermo quando si monitora - li' il movimento lo da' la spazzata -
+        // e fermo per chi ha chiesto meno movimento.
+        running: Appearance.motion-enabled && !root.running;
+        triggered => {
+            root.breath-step = root.breath-step + 1 >= 2 * root.breath-steps ? 0 : root.breath-step + 1;
+        }
+    }
+
+    // Nucleo. Verde a monitoraggio in corso, spento altrimenti: e' il segnale
+    // che resta leggibile anche con le animazioni disattivate.
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.size * 0.09;
+        height: root.size * 0.09;
+        border-radius: self.width / 2;
+        background: root.running ? Palette.green : Palette.text-disabled;
+        // A monitoraggio in corso resta pieno: li' il movimento lo da' la
+        // spazzata, e un nucleo che pulsa sotto una spazzata che gira e'
+        // rumore.
+        opacity: root.running
+            ? 1.0
+            : 0.30 + 0.55 * root.breath;
+    }
+
+    accessible-role: text;
+    accessible-label: root.caption;
+}
+
+// ------------------------------------------------------- DettagliTecnici
+//
+// Il secondo livello del linguaggio (PR-01, ADR-0117). In superficie la frase
+// semplice; qui sotto il termine tecnico, per chi lo cerca.
+//
+// SI APRE E RESTA APERTO finche' qualcuno non lo richiude. Non e' un
+// suggerimento al passaggio del mouse: quello sparisce appena il puntatore si
+// sposta, non si raggiunge con la tastiera, e una tecnologia assistiva non lo
+// annuncia. Un dettaglio che si puo' leggere solo tenendo fermo il mouse non e'
+// un dettaglio accessibile.
+//
+// Il comando dice che cosa fa con le parole, non con una freccia: un glifo
+// che il carattere del prodotto non contiene si disegnerebbe come un quadrato.
+export component DettagliTecnici inherits VerticalLayout {
+    in property <string> testo;
+    in-out property <bool> aperto: false;
+    // Falso quando chi lo usa mostra il testo altrove, sotto a tutta
+    // larghezza: la forma compatta di `AvvertenzaDiSicurezza` mette il comando
+    // sulla stessa riga del messaggio, e il dettaglio aperto non puo' stare in
+    // una colonna larga quanto il comando.
+    in property <bool> mostra-testo: true;
+
+    spacing: Spacing.xs;
+    vertical-stretch: 0;
+
+    comando := Rectangle {
+        height: 26px;
+        horizontal-stretch: 0;
+        border-radius: Spacing.radius-row;
+        background: touch.has-hover ? Palette.selected : transparent;
+
+        HorizontalLayout {
+            padding-left: Spacing.xs;
+            padding-right: Spacing.xs;
+
+            Text {
+                text: root.aperto ? @tr("Nascondi i dettagli tecnici") : @tr("Dettagli tecnici");
+                vertical-alignment: center;
+                color: Palette.text-muted;
+                font-size: Typography.body-secondary;
+            }
+        }
+
+        focus := FocusScope {
+            key-pressed(event) => {
+                if (event.text == Key.Return || event.text == " ") {
+                    Activity.touched();
+                    root.aperto = !root.aperto;
+                    return accept;
+                }
+                return reject;
+            }
+        }
+
+        touch := TouchArea {
+            mouse-cursor: MouseCursor.pointer;
+            clicked => {
+                Activity.touched();
+                focus.focus();
+                root.aperto = !root.aperto;
+            }
+        }
+
+        Rectangle {
+            background: transparent;
+            border-width: focus.has-focus ? 2px : 0px;
+            border-color: Palette.focus;
+            border-radius: Spacing.radius-row;
+        }
+
+        accessible-role: button;
+        accessible-label: @tr("Dettagli tecnici");
+        accessible-expandable: true;
+        accessible-expanded: root.aperto;
+        accessible-action-default => {
+            root.aperto = !root.aperto;
+        }
+        accessible-action-expand => {
+            root.aperto = true;
+        }
+    }
+
+    if root.aperto && root.mostra-testo: Text {
+        text: root.testo;
+        color: Palette.text-muted;
+        font-size: Typography.body-secondary;
+        wrap: word-wrap;
+    }
+}
+
+// ---------------------------------------------------- AvvertenzaDiSicurezza
+//
+// Un messaggio di sicurezza (ADR-0117): un'avvertenza fissa che protegge da
+// uno di cinque rischi — scambiare un'osservazione per un giudizio o per una
+// prova, esporre un segreto, compiere un'azione che non si annulla, fidarsi di
+// un file non verificato, scambiare il funzionamento dimostrativo per quello
+// reale.
+//
+// Il CODICE non si mostra: serve alla guardia, che verifica che testo e
+// dettaglio siano quelli della versione corrente registrata in
+// `lisi_core::security_messages`. Un'avvertenza scritta qui e non registrata,
+// o registrata e non piu' mostrata, fa diventare rossa la prova.
+export component AvvertenzaDiSicurezza inherits Rectangle {
+    in property <string> codice;
+    in property <string> testo;
+    in property <string> dettaglio;
+    in property <Tone> tone: Tone.warning;
+
+    vertical-stretch: 0;
+    border-radius: Spacing.radius-row;
+    border-width: Spacing.hairline;
+
+    property <color> ink:
+        root.tone == Tone.danger ? Palette.coral
+        : root.tone == Tone.info ? Palette.cyan
+        : Palette.amber;
+
+    background:
+        root.tone == Tone.danger ? Palette.danger-surface
+        : root.tone == Tone.info ? Palette.info-surface
+        : Palette.warning-surface;
+
+    border-color: root.ink;
+
+    // La forma compatta: messaggio e «Dettagli tecnici» sulla stessa riga, il
+    // dettaglio aperto sotto a tutta larghezza (UX-EXCELLENCE-02, SIM3-04). La
+    // usa la fascia dell'Esercitazione, che sta sopra ogni schermata: due
+    // righe e i margini pieni costavano settanta pixel a ogni pagina. Il testo
+    // e' lo stesso, e il dettaglio resta a un clic.
+    in property <bool> compatta: false;
+    property <bool> dettaglio-aperto: false;
+
+    VerticalLayout {
+        padding-top: root.compatta ? Spacing.xs : Spacing.md;
+        padding-bottom: root.compatta ? Spacing.xs : Spacing.md;
+        padding-left: Spacing.md;
+        padding-right: root.compatta ? Spacing.xs : Spacing.md;
+        spacing: Spacing.xs;
+
+        if !root.compatta: Text {
+            text: root.testo;
+            color: Palette.text;
+            font-size: Typography.body-secondary;
+            wrap: word-wrap;
+            accessible-role: text;
+            accessible-label: root.testo;
+        }
+
+        if !root.compatta: DettagliTecnici {
+            testo: root.dettaglio;
+            aperto <=> root.dettaglio-aperto;
+        }
+
+        if root.compatta: HorizontalLayout {
+            spacing: Spacing.md;
+
+            Text {
+                text: root.testo;
+                color: Palette.text;
+                font-size: Typography.body-secondary;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+                wrap: word-wrap;
+                accessible-role: text;
+                accessible-label: root.testo;
+            }
+
+            DettagliTecnici {
+                testo: root.dettaglio;
+                aperto <=> root.dettaglio-aperto;
+                mostra-testo: false;
+                alignment: center;
+                horizontal-stretch: 0;
+            }
+        }
+
+        if root.compatta && root.dettaglio-aperto: Text {
+            text: root.dettaglio;
+            color: Palette.text-muted;
+            font-size: Typography.body-secondary;
+            wrap: word-wrap;
+        }
+    }
+}
+
+// ---------------------------------------------------------------- Origine
+//
+// Chi dice il dato che si sta leggendo (PR-03, ADR-0118): Telegram, NEXUM o
+// una persona. Tre valori e nessun altro; «non registrata» quando l'archivio
+// non lo sa, invece di un valore plausibile.
+export enum Origine { osservato, calcolato, operatore, non-registrata }
+
+// ------------------------------------------------------------ OrigineSegno
+//
+// Il segno accanto a un valore. SI LEGGE CON LA PAROLA: il colore la rafforza
+// e non la sostituisce. Le tre forme sono diverse anche senza colore —
+// angoli vivi per ciò che viene da fuori, angoli tondi per il calcolo, una
+// barra a sinistra per la persona — e una tecnologia assistiva legge la
+// parola intera.
+export component OrigineSegno inherits Rectangle {
+    in property <Origine> origine;
+
+    property <string> parola:
+        root.origine == Origine.osservato ? @tr("OSSERVATO") : root.origine == Origine.calcolato ? @tr("CALCOLATO") : root.origine == Origine.operatore ? @tr("OPERATORE") : @tr("ORIGINE NON REGISTRATA");
+
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    height: 18px;
+    width: etichetta.preferred-width + 2 * Spacing.xs + (root.origine == Origine.operatore ? 3px : 0px);
+    border-width: Spacing.hairline;
+    border-color: Palette.frame-dim;
+    border-radius: root.origine == Origine.calcolato ? 9px : 0px;
+    background: transparent;
+
+    if root.origine == Origine.operatore: Rectangle {
+        x: 0;
+        width: 3px;
+        height: parent.height;
+        background: Palette.frame-dim;
+    }
+
+    etichetta := Text {
+        x: Spacing.xs + (root.origine == Origine.operatore ? 3px : 0px);
+        text: root.parola;
+        vertical-alignment: center;
+        color: Palette.text-muted;
+        font-size: Typography.caption;
+        letter-spacing: Typography.track-eyebrow;
+    }
+
+    accessible-role: text;
+    accessible-label: @tr("Origine: {}", root.parola);
+}
+
+// --------------------------------------------------------- LegendaOrigini
+//
+// Sopra un elenco: quali colonne sono osservate, quali calcolate, quali di una
+// persona. Un campo vuoto non si mostra. La guardia `origin_guard.rs` verifica
+// che ogni elenco di dati abbia la sua legenda e che nomini ogni origine che
+// la sua struttura contiene.
+export component LegendaOrigini inherits VerticalLayout {
+    in property <string> osservato;
+    in property <string> calcolato;
+    in property <string> operatore;
+
+    spacing: 2px;
+    vertical-stretch: 0;
+    // L'INTESTAZIONE RESTA CON LE SUE VOCI (QUALITY-02, la prima serie di
+    // catture): nel Report la legenda riceveva più altezza del necessario, e
+    // la colonna la distribuiva staccando «Da dove viene…» dalle voci di
+    // duecento pixel. Lo spazio in più resta sotto.
+    alignment: start;
+
+    // SI LEGGE SENZA CODICE (INSTALLED-APP-E2E-01, E2E01-19): «CALCOLATO : le
+    // risposte» era criptico per un operatore. Ora la legenda dice che cosa è,
+    // e ogni voce dice da chi viene.
+    //
+    // UNA VOCE PER RIGA: in una riga sola le voci, più lunghe di prima,
+    // uscivano dal bordo a destra; andando a capo dentro una riga orizzontale
+    // restavano tagliate in altezza. In colonna ognuna ha la larghezza intera.
+    Text { text: @tr("Da dove viene ciò che si legge qui sotto:"); color: Palette.text-muted; font-size: Typography.caption; }
+    if root.osservato != "": HorizontalLayout {
+        spacing: 4px;
+        alignment: start;
+        OrigineSegno { origine: Origine.osservato; }
+        Text { text: @tr("{} (da Telegram)", root.osservato); color: Palette.text-muted; font-size: Typography.caption; vertical-alignment: center; overflow: elide; }
+    }
+    if root.calcolato != "": HorizontalLayout {
+        spacing: 4px;
+        alignment: start;
+        OrigineSegno { origine: Origine.calcolato; }
+        Text { text: @tr("{} (dal programma)", root.calcolato); color: Palette.text-muted; font-size: Typography.caption; vertical-alignment: center; overflow: elide; }
+    }
+    if root.operatore != "": HorizontalLayout {
+        spacing: 4px;
+        alignment: start;
+        OrigineSegno { origine: Origine.operatore; }
+        Text { text: @tr("{} (da una persona)", root.operatore); color: Palette.text-muted; font-size: Typography.caption; vertical-alignment: center; overflow: elide; }
+    }
+}
+
+// ------------------------------------------------------------- Spiegabile
+//
+// Il genere dell'elemento di cui si chiede «Perché vedo questo?» (PR-02,
+// ADR-0119). L'insieme e' chiuso: il Rust lo traduce nel genere del dominio
+// con un `match` esaustivo, e un genere nuovo senza traduzione non compila.
+export enum Spiegabile {
+    contenuto,
+    avviso,
+    livello,
+    riscontro,
+    riscontro-retroattivo,
+    gruppo-di-segnali,
+    riga-cronologia-osservata,
+    riga-cronologia-di-una-persona,
+    suggerimento-di-fonte,
+    ricerca-pubblica,
+    voce-della-coda,
+    vicino-osservato,
+    vicino-deciso,
+    tendenza,
+    aumento,
+    somiglianza,
+    associazione,
+    periodo-prioritario,
+}
+
+// ------------------------------------------------------- PercheVedoQuesto
+//
+// IL COMANDO UNICO «Perché vedo questo?» (PR-02, ADR-0119). Prima di PR-02 la
+// stessa domanda aveva sei nomi, e alcuni elenchi non ne avevano nessuno.
+//
+// L'ETICHETTA E' FISSATA QUI e non si passa: un'istanza non puo' cambiarla.
+// `elemento` dice di che cosa si chiede, a chi usa una tecnologia assistiva:
+// in un elenco, cento comandi con lo stesso nome non si distinguono.
+export component PercheVedoQuesto inherits HorizontalLayout {
+    in property <string> elemento;
+    callback chiesto();
+
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    // Il pulsante resta della sua misura anche dentro una colonna larga: un
+    // comando che occupa tutta la riga si legge come una riga.
+    alignment: start;
+
+    HudButton {
+        label: @tr("Perché vedo questo?");
+        reason: root.elemento;
+        clicked => {
+            root.chiesto();
+        }
+    }
+}
+
+// ---------------------------------------------------------- Copertura
+//
+// Che cosa stavamo guardando (PR-05, ADR-0121). Tre stati e nessun quarto.
+export enum StatoCopertura { coperto, non-coperto, non-determinabile }
+
+// Un tratto della barra, in frazioni della finestra.
+export struct TrattoCopertura {
+    // Da dove comincia e quanto e' largo, fra 0 e 1.
+    inizio: float,
+    ampiezza: float,
+    stato: StatoCopertura,
+}
+
+// ------------------------------------------------------ BarraCopertura
+//
+// LA BARRA SI LEGGE SENZA COLORE: coperto riempie tutta l'altezza, non
+// determinabile meta', non coperto e' una linea sottile sul fondo. Il colore
+// rafforza e non sostituisce, e la descrizione dice a parole cio' che la
+// barra disegna.
+// Un periodo RECUPERATO DOPO (PR-08, ADR-0124): letto nella cronologia, non
+// guardato allora. NON e' uno stato della copertura: e' uno strato a parte,
+// disegnato come una striscia in alto, sopra i tratti.
+export struct TrattoRecuperato {
+    inizio: float,
+    ampiezza: float,
+}
+
+export component BarraCopertura inherits Rectangle {
+    in property <[TrattoCopertura]> tratti;
+    // Lo strato dei periodi recuperati dopo: vuoto nel caso normale.
+    in property <[TrattoRecuperato]> recuperati: [];
+    // I tratti non coperti e non determinabili, detti a parole.
+    in property <string> descrizione;
+
+    height: 14px;
+    vertical-stretch: 0;
+    background: Palette.panel;
+    border-width: Spacing.hairline;
+    border-color: Palette.line-divider;
+
+    for tratto in root.tratti: Rectangle {
+        x: parent.width * tratto.inizio;
+        width: max(1px, parent.width * tratto.ampiezza);
+        height: tratto.stato == StatoCopertura.coperto
+            ? parent.height
+            : (tratto.stato == StatoCopertura.non-determinabile ? parent.height / 2 : 2px);
+        y: parent.height - self.height;
+        background: tratto.stato == StatoCopertura.coperto
+            ? Palette.cyan
+            : (tratto.stato == StatoCopertura.non-determinabile ? Palette.amber : Palette.text-disabled);
+    }
+
+    // LO STRATO RECUPERATO si legge senza colore: e' la sola forma che sta in
+    // ALTO, mentre ogni stato della copertura parte dal fondo.
+    for recuperato in root.recuperati: Rectangle {
+        x: parent.width * recuperato.inizio;
+        width: max(1px, parent.width * recuperato.ampiezza);
+        height: 3px;
+        y: 0px;
+        background: Palette.azure;
+    }
+
+    accessible-role: text;
+    accessible-label: root.descrizione;
+}
+
+// --------------------------------------------------- LegendaCopertura
+//
+// Le tre forme della barra, con la parola accanto a ciascuna.
+export component LegendaCopertura inherits HorizontalLayout {
+    spacing: Spacing.md;
+    vertical-stretch: 0;
+
+    HorizontalLayout {
+        spacing: Spacing.xs;
+        Rectangle { width: 14px; height: 10px; y: 2px; background: Palette.cyan; }
+        Text { text: @tr("coperto"); color: Palette.text-muted; font-size: Typography.caption; vertical-alignment: center; }
+    }
+    HorizontalLayout {
+        spacing: Spacing.xs;
+        Rectangle { width: 14px; height: 5px; y: 7px; background: Palette.amber; }
+        Text { text: @tr("non determinabile"); color: Palette.text-muted; font-size: Typography.caption; vertical-alignment: center; }
+    }
+    HorizontalLayout {
+        spacing: Spacing.xs;
+        Rectangle { width: 14px; height: 2px; y: 10px; background: Palette.text-disabled; }
+        Text { text: @tr("non coperto"); color: Palette.text-muted; font-size: Typography.caption; vertical-alignment: center; }
+    }
+    // Non e' un quarto stato: e' lo strato dei periodi letti dopo (PR-08).
+    HorizontalLayout {
+        spacing: Spacing.xs;
+        Rectangle { width: 14px; height: 3px; y: 0px; background: Palette.azure; }
+        Text { text: @tr("recuperato dopo, non guardato allora"); color: Palette.text-muted; font-size: Typography.caption; vertical-alignment: center; }
+    }
+    Rectangle { horizontal-stretch: 1; background: transparent; }
+}

@@ -1,0 +1,64 @@
+NEXUM/97 — Licenza proprietaria
+Identificativo SPDX: LicenseRef-LISI-Proprietary
+
+Copyright (c) 2026 Giuseppe LISI. Tutti i diritti riservati.
+
+Ideazione e progettazione: Giuseppe LISI.
+
+NEXUM/97 è il nome pubblico del prodotto. L'identificativo SPDX qui sopra e la
+cartella dei dati locali conservano la denominazione precedente, "LISI Telegram
+Monitor", come identificatore tecnico di installazioni già esistenti: si
+riferiscono al medesimo software e non a un prodotto distinto.
+
+1. Riserva di diritti
+
+   Questo software e la relativa documentazione sono opera protetta. Nessun
+   diritto è concesso in via implicita. Ogni diritto non espressamente
+   concesso per iscritto dal titolare è riservato.
+
+2. Uso consentito
+
+   L'uso è consentito ai soli soggetti espressamente autorizzati per iscritto
+   dal titolare, nei limiti e per le finalità indicate in quell'autorizzazione,
+   e unicamente per il monitoraggio autorizzato di fonti accessibili a un
+   account d'ufficio legittimamente detenuto.
+
+3. Divieti
+
+   Salvo autorizzazione scritta del titolare sono vietati la redistribuzione,
+   la sublicenza, la vendita, il noleggio, la pubblicazione del codice
+   sorgente, la decompilazione e la creazione di opere derivate.
+
+4. Componenti di terze parti
+
+   Il software incorpora componenti di terze parti soggetti alle rispettive
+   licenze, che prevalgono su questo testo per le parti di loro pertinenza.
+   L'elenco delle dipendenze e delle relative licenze è ricavabile da
+   Cargo.lock e dai controlli descritti in SECURITY.md.
+
+   In particolare l'interfaccia grafica utilizza Slint, distribuito da
+   SixtyFPS GmbH con licenza multipla. Il prodotto adotta la Slint
+   Royalty-free Desktop, Mobile, and Web Applications License 2.0, che
+   subordina la distribuzione a una condizione di attribuzione descritta in
+   docs/adr/ADR-0005-SLINT-LICENSING.md.
+
+5. Assenza di garanzia
+
+   Il software è fornito "così com'è", senza garanzie di alcun tipo, esplicite
+   o implicite, incluse a titolo esemplificativo le garanzie di
+   commerciabilità e di idoneità a uno scopo particolare. Il titolare non
+   risponde di danni diretti, indiretti, incidentali o consequenziali
+   derivanti dall'uso del software.
+
+   Il software non sostituisce un'acquisizione forense formalmente disposta e
+   non attribuisce automaticamente responsabilità ad alcun soggetto.
+
+---
+
+Nota tecnica, non contrattuale.
+
+Questo testo è una riserva di diritti conservativa, predisposta per dare al
+progetto una posizione dichiarata sulla licenza in luogo di un vuoto. Non
+costituisce parere legale. Prima di una distribuzione a soggetti terzi il
+testo va verificato e, se necessario, sostituito con quello concordato
+contrattualmente. Vedere docs/adr/ADR-0007-PRODUCT-LICENSE.md.

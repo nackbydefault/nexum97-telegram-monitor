@@ -1,0 +1,57 @@
+{
+  "$commento": [
+    "Impronte dei caratteri del sistema grafico approvato.",
+    "",
+    "I file NON sono versionati: qui sta la loro impronta, e scripts/fetch-fonts.ps1",
+    "li scarica e la riconfronta. E' lo stesso modo di tdlib.lock.json e",
+    "vcredist.lock.json - il repository conserva cio' che permette di verificare,",
+    "non i binari di terze parti.",
+    "",
+    "Entrambe le famiglie sono SIL Open Font License 1.1. I testi di licenza sono",
+    "scaricati insieme ai caratteri e vanno distribuiti con il prodotto: e' un",
+    "obbligo della licenza, non una cortesia.",
+    "",
+    "Aggiornare una versione significa cambiare qui l'impronta E la revisione, con",
+    "scripts/fetch-fonts.ps1 -Update, e dire in DECISION_LOG perche'."
+  ],
+  "generato": "2026-08-12",
+  "caratteri": [
+    {
+      "nome": "Sora",
+      "file": "assets/fonts/Sora-Variable.ttf",
+      "ruolo": "Typography.core - porta la lingua",
+      "assi": "variabile sull'asse wght, 100-800; il prodotto ne usa 300, 400 e 500",
+      "origine": "https://raw.githubusercontent.com/google/fonts/main/ofl/sora/Sora%5Bwght%5D.ttf",
+      "licenza": "OFL-1.1",
+      "testo_licenza": "assets/fonts/licenses/OFL-Sora.txt",
+      "byte": 111400,
+      "sha256": "84ff7096ae3ec6c8be47d906d1a0ba4de7f2ce78c615275c77301964a316e16c",
+      "nota_nome": "A monte si chiama Sora[wght].ttf. Le parentesi quadre sono caratteri jolly per PowerShell e un fastidio per WiX, quindi il file viene salvato con un nome senza. Il contenuto non e' toccato: l'impronta e' quella del file scaricato."
+    },
+    {
+      "nome": "IBM Plex Mono",
+      "file": "assets/fonts/IBMPlexMono-Regular.ttf",
+      "ruolo": "Typography.mono - porta cio' che ha prodotto una macchina",
+      "assi": "statico, peso 400; e' l'unico peso monospaziato che il prodotto usa",
+      "origine": "https://raw.githubusercontent.com/IBM/plex/master/packages/plex-mono/fonts/complete/ttf/IBMPlexMono-Regular.ttf",
+      "licenza": "OFL-1.1",
+      "testo_licenza": "assets/fonts/licenses/OFL-IBMPlexMono.txt",
+      "byte": 173052,
+      "sha256": "7c6fbddca4b700be918f5f6183d9bd4464fa427fe435f0b480d77fe2bb8c5a43"
+    }
+  ],
+  "licenze": [
+    {
+      "file": "assets/fonts/licenses/OFL-Sora.txt",
+      "origine": "https://raw.githubusercontent.com/google/fonts/main/ofl/sora/OFL.txt",
+      "byte": 4385,
+      "sha256": "ba0b9729c9428ba79a0459ab8ec575791b51509dbec213e383d0316d37fec299"
+    },
+    {
+      "file": "assets/fonts/licenses/OFL-IBMPlexMono.txt",
+      "origine": "https://raw.githubusercontent.com/IBM/plex/master/LICENSE.txt",
+      "byte": 4456,
+      "sha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+    }
+  ]
+}

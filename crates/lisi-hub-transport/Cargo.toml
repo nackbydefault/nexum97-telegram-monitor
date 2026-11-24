@@ -1,0 +1,28 @@
+[package]
+name = "lisi-hub-transport"
+description = "Trasporto TLS autenticato fra postazione e Hub di NEXUM/97"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# ============================================================================
+# L'UNICA CRATE CHE PARLA TLS (ADR-0083, decisione 8).
+# ============================================================================
+#
+# Nessun'altra crate del prodotto nomina `rustls` o `ring` nel proprio
+# manifesto, e una prova lo verifica sul file di blocco. Un cambio di provider,
+# se mai servisse, si fa qui e solo qui.
+#
+# Nessun `unsafe` (`#![forbid(unsafe_code)]` in lib.rs), nessun runtime
+# asincrono, nessun client HTTP.
+
+[dependencies]
+lisi-core.workspace = true
+ring.workspace = true
+rustls.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

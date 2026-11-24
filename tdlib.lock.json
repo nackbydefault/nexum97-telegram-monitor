@@ -1,0 +1,108 @@
+{
+  "_commento": [
+    "Fissa l'artefatto TDLib usato dal prodotto. TDLib non pubblica tag di",
+    "rilascio dopo v1.8.0 e viene distribuito su master: la sola ancora stabile",
+    "e' il commit. Le impronte sono state prodotte da scripts/build-tdlib.ps1",
+    "sulla build reale, non trascritte a mano ne' stimate.",
+    "Vedere docs/adr/ADR-0008-TDLIB-INTEGRATION.md."
+  ],
+  "stato": "COMPILATO_E_VERIFICATO",
+  "data_build": "2026-09-07",
+  "tdlib": {
+    "repository": "https://github.com/tdlib/td",
+    "commit": "022d60202e446ad1287b9fb68e687c8a0760788b",
+    "commit_data": "2026-07-17T17:18:48+03:00",
+    "versione_dichiarata_in_cmakelists": "1.8.66",
+    "versione_riportata_a_runtime": "1.8.66",
+    "licenza": "BSL-1.0",
+    "licenza_file_presente_nel_sorgente": "LICENSE_1_0.txt",
+    "nota_commit": "Letto dal clone con git rev-parse HEAD, non trascritto da una fonte esterna. La versione a runtime e' stata ottenuta interrogando la DLL prodotta con td_execute getOption(version) e coincide con quella del sorgente."
+  },
+  "toolchain_di_build": {
+    "sistema": "Windows 11 Pro for Workstations 10.0.26200 x64",
+    "visual_studio": "Build Tools 2022, 17.14.36",
+    "msvc_toolset": "14.44.35207",
+    "windows_sdk": "10.0.26100.0",
+    "cmake": "3.31.6-msvc6, distribuito con Visual Studio",
+    "ninja": "1.12.1, distribuito con Visual Studio",
+    "generatore": "Ninja",
+    "configurazione": "Release",
+    "architettura": "x64, verificata con dumpbin /HEADERS (machine 8664)",
+    "target_compilato": "tdjson",
+    "unita_compilate": 631,
+    "durata_reale": "00:24:07",
+    "macchina": "Intel Xeon W-2102 a 2.9 GHz, 4 CPU logiche, 31,6 GB RAM"
+  },
+  "dipendenze_native": {
+    "_registro_vcpkg": {
+      "commit": "7e43e0768a5af180a9cf75d87d692dce1b9da34f",
+      "commit_data": "2026-08-27",
+      "titolo": "[openssl] Update to 3.6.4 (#53604)",
+      "perche_questo_e_non_master": "E' il commit MINIMO che porta OpenSSL 3.6.4. Aggiornare il registro a master avrebbe mosso ogni altra porta insieme a questa, cioe' avrebbe cambiato la catena di fornitura in punti che nessuno aveva chiesto di cambiare. A questo commit zlib resta 1.3.2 e gperf resta 3.3, e lo si e' verificato confrontando le tre porte prima di spostarsi.",
+      "perche_e_registrato": "Fino a DEP-02 il lock diceva le VERSIONI delle dipendenze native ma non da quale stato del registro venissero. Due persone che leggessero 'openssl 3.6.4, da vcpkg' potevano ottenere due build diverse. Il commit e' l'ancora, come lo e' per TDLib."
+    },
+    "openssl": {
+      "versione": "3.6.4",
+      "licenza": "Apache-2.0",
+      "origine": "vcpkg, triplet x64-windows",
+      "rischio_noto": "La issue tdlib/td#3171 riporta un crash con OpenSSL 3.4.0 dentro PKCS5_PBKDF2_HMAC, con 3.2.2 indicata come funzionante; non e' documentato se la causa sia stata risolta. Qui si usa la 3.6.4, piu' recente di quella problematica: cio' non garantisce nulla in nessuna delle due direzioni e va verificato, non presunto. Lo smoke test del confine FFI apre il database locale, che e' il percorso che usa quella derivazione di chiave, ed e' passato: e' un'osservazione su un caso, non una dimostrazione che il difetto non ci sia.",
+      "nota_cve": "cargo audit non ispeziona una DLL C: le CVE di OpenSSL vanno seguite fuori dagli strumenti Rust."
+    },
+    "zlib": {
+      "versione": "1.3.2",
+      "licenza": "Zlib",
+      "origine": "vcpkg, triplet x64-windows",
+      "nota_nome_file": "Sul triplet x64-windows vcpkg nomina la libreria z.dll, non zlib1.dll."
+    },
+    "gperf": {
+      "versione": "3.3",
+      "uso": "solo in build, non redistribuito",
+      "origine": "vcpkg, triplet x64-windows"
+    }
+  },
+  "artefatti": {
+    "_nota": "Impronte calcolate da scripts/build-tdlib.ps1 sugli artefatti realmente prodotti.",
+    "tdjson.dll": {
+      "sha256": "14fd63c89b0cd64a404e4a8bf37d4c117e1c3635c82a181c15d0f86bca22ab8f",
+      "dimensione_byte": 27121664,
+      "simboli_esportati_verificati": [
+        "td_create_client_id",
+        "td_send",
+        "td_receive",
+        "td_execute"
+      ]
+    },
+    "libcrypto-3-x64.dll": {
+      "sha256": "2391a9cee201a73dd254f3e271f486d68601c618cf07e3c32fe41e00e8887d32",
+      "dimensione_byte": 5341184
+    },
+    "libssl-3-x64.dll": {
+      "sha256": "8b0169c28bd76c8c837c7014502f7557ef024251b12d75b820a0746580d557d1",
+      "dimensione_byte": 871936
+    },
+    "z.dll": {
+      "sha256": "abd582544932785dc4356db567f08798d5df11866cd47031d5e78128c13743ff",
+      "dimensione_byte": 91136
+    }
+  },
+  "dipendenze_di_sistema_richieste_sulla_postazione": [
+    "MSVCP140.dll",
+    "VCRUNTIME140.dll",
+    "VCRUNTIME140_1.dll",
+    "_nota: fanno parte del redistribuibile Visual C++ 2015-2022 x64 e vanno previste dall'installer della Milestone 10."
+  ],
+  "verifica": {
+    "script_creato": true,
+    "script_eseguito": true,
+    "sorgente_clonato": true,
+    "compilazione_eseguita": true,
+    "compilazione_riuscita": true,
+    "dll_prodotte": true,
+    "architettura_verificata": true,
+    "simboli_verificati": true,
+    "dipendenze_native_verificate": true,
+    "impronte_calcolate": true,
+    "smoke_test_eseguito": true,
+    "versione_a_runtime_coincide_con_il_sorgente": true
+  }
+}

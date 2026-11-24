@@ -1,0 +1,39 @@
+[package]
+name = "lisi-services"
+description = "Servizi applicativi di NEXUM/97: autenticazione, sessione, fonti e dizionari"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# Propaga la feature del proof of concept ai crate sottostanti, cosi' che il
+# workspace resti compilabile e provabile senza TDLib installata.
+tdlib-runtime = ["lisi-telegram/tdlib-runtime"]
+
+[dependencies]
+lisi-core.workspace = true
+# La SECONDA destinazione del trasporto (TEAM-CLIENT-01, ADR-0091): il ciclo
+# vivo della postazione vive in `crate::hub_client`, ed e' l'unico modulo del
+# prodotto che raggiunga questa crate. rustls e ring entrano cosi' nel binario
+# consegnato, e sono attribuiti in `lisi-core/src/attribution.rs`.
+lisi-hub-transport.workspace = true
+lisi-platform.workspace = true
+lisi-security.workspace = true
+lisi-storage.workspace = true
+lisi-telegram.workspace = true
+rust_xlsxwriter.workspace = true
+lopdf.workspace = true
+flate2.workspace = true
+zip.workspace = true
+png.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile = "3.24.0"

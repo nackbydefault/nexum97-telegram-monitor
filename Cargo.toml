@@ -1,0 +1,160 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/lisi-app",
+    "crates/lisi-core",
+    "crates/lisi-hub-transport",
+    "crates/lisi-platform",
+    "crates/lisi-security",
+    "crates/lisi-services",
+    "crates/lisi-storage",
+    "crates/lisi-telegram",
+    # Gli strumenti interni stanno soltanto nell'archivio (ADR-0210).
+]
+default-members = ["crates/lisi-app"]
+
+[workspace.package]
+version = "0.2.2"
+edition = "2024"
+rust-version = "1.97.1"
+authors = ["Giuseppe LISI"]
+# Licenza proprietaria: testo in LICENSE, motivazione in ADR-0007.
+# `LicenseRef-` e' la forma SPDX per le licenze non standard.
+license = "LicenseRef-LISI-Proprietary"
+# Il campo `repository` e' deliberatamente assente: l'URL definitivo non e'
+# ancora deciso e un segnaposto inventato sarebbe un metadato falso.
+# Reintrodurlo quando la visibilita' del repository sara' stabilita (ADR-0007).
+publish = false
+
+[workspace.dependencies]
+# La versione, oltre al path, evita una dipendenza wildcard: `cargo deny`
+# rifiuta i requisiti `*` perche' non vincolano nulla in caso di pubblicazione.
+lisi-core = { path = "crates/lisi-core", version = "0.2.0" }
+lisi-hub-transport = { path = "crates/lisi-hub-transport", version = "0.2.0" }
+lisi-platform = { path = "crates/lisi-platform", version = "0.2.0" }
+lisi-security = { path = "crates/lisi-security", version = "0.2.0" }
+lisi-services = { path = "crates/lisi-services", version = "0.2.0" }
+lisi-storage = { path = "crates/lisi-storage", version = "0.2.0" }
+lisi-telegram = { path = "crates/lisi-telegram", version = "0.2.0" }
+# `bundled` compila SQLite staticamente: nessuna DLL da distribuire e nessun
+# rischio di caricare una sqlite3.dll estranea dal percorso di ricerca (ADR-0006).
+rusqlite = { version = "0.41.1", features = ["bundled"] }
+# Lettura e scrittura del formato di scambio dei dizionari (ADR-0014).
+# Scrivere qui un parser JSON significherebbe mettere codice nuovo su un
+# percorso che riceve file esterni; queste due librerie sono lette da molte piu'
+# persone di quante ne leggerebbero il nostro. Licenza MIT OR Apache-2.0.
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+sha2 = "0.11.0"
+# Argon2id per le frasi di accesso delle persone (TEAM-ASSIGN-01, ADR-0097).
+# Il gettone di un dispositivo e' casuale a 256 bit e un'impronta veloce
+# basta; una frase scelta da una persona non lo e', e serve una funzione
+# LENTA APPOSTA. RustCrypto, pura Rust, licenza MIT OR Apache-2.0.
+argon2 = { version = "0.6.0", features = ["zeroize"] }
+# Azzera in memoria la chiave e la frase di una copia cifrata quando non
+# servono piu' (ENCRYPT-01, ADR-0175). Era gia' nel lockfile tramite
+# `argon2`; ora la nomina anche `lisi-security`. Licenza Apache-2.0 OR MIT.
+zeroize = "1.9.0"
+# AES-256-GCM per la copia cifrata (ENCRYPT-01, ADR-0175). RustCrypto, come
+# `argon2`; verificata da NCC Group nel 2020. Soltanto AES e l'allocazione:
+# niente generatore proprio, i byte casuali vengono da `random_bytes`.
+aes-gcm = { version = "0.11.1", default-features = false, features = ["aes", "alloc", "zeroize"] }
+# `raw-window-handle-06` espone l'handle nativo della finestra, che serve per
+# chiedere al gestore delle finestre la barra del titolo scura (ADR-0020).
+# Non aggiunge codice al programma: `raw-window-handle` 0.6 e' gia' nel
+# lockfile come dipendenza transitiva di Slint.
+# Il DOCX lo scrive il prodotto (ADR-0180, che sostituisce ADR-0032): `zip`
+# chiude le parti nel pacchetto, in scrittura soltanto. "deflate" e' la sola
+# feature, la stessa che chiede rust_xlsxwriter: niente cifratura, niente
+# altri formati di compressione.
+zip = { version = "9.3.0", default-features = false, features = ["deflate"] }
+# Nessuna feature accesa: quelle di rust_xlsxwriter sono tutte opzionali e
+# tirano dentro chrono, jiff, polars, serde o wasm. Il prodotto non ne usa
+# nessuna, e cio' che non si accende non entra nel binario ne' nelle licenze.
+rust_xlsxwriter = { version = "0.102.0", default-features = false }
+# Le feature predefinite di lopdf (chrono, jiff, rayon, time) restano spente:
+# le date le porta gia' il dominio e il parallelismo non serve a scrivere.
+#
+# printpdf e' stato scartato dopo una sonda: scrive l'array /ID del trailer con
+# due stringhe casuali, in codice fisso e senza alcun punto di sostituzione, e
+# con quello un PDF deterministico non e' producibile (ADR-0034).
+lopdf = { version = "0.44.0", default-features = false }
+# Le espressioni regolari dei dizionari (DICT-REGEX-01, ADR-0187): un motore
+# senza ritorni all'indietro, in tempo lineare per costruzione.
+regex = "1.13.1"
+# La decompressione dei file `.json.gz` di NVD scaricati dal programma
+# (SNAP-NET-01, ADR-0186). Era gia' compilata nel prodotto: la porta lopdf.
+# Soltanto gzip, su file, con un tetto; gli archivi zip non si leggono.
+flate2 = "1.1.9"
+# Il codificatore PNG della figura del grafo (ADR-0056, GRAPH-03).
+#
+# NON AGGIUNGE CODICE AL PROGRAMMA: `png` 0.18 e' gia' nel file di blocco come
+# dipendenza transitiva di Slint, e `cargo deny` e `cargo audit` la coprono gia'.
+# Qui diventa diretta per `lisi-services`, che deve SCRIVERE un PNG e non
+# soltanto leggerne uno.
+#
+# L'alternativa era scriverlo a mano - il formato ammette blocchi deflate
+# memorizzati, e il resto e' un CRC-32 e un Adler-32 - ed e' stata scartata:
+# un codificatore di formato scritto in casa e' codice nuovo che nessuno ha
+# esercitato, dentro un prodotto che produce atti, e se sbaglia sbaglia in
+# silenzio.
+png = { version = "0.18.1", default-features = false }
+# Il trasporto dell'Hub (ADR-0083, DEC-319; ingresso deciso da DEC-320).
+#
+# SOLO `lisi-hub-transport` le usa, e una prova lo verifica sul file di blocco.
+#
+# `default-features = false` e' la parte che conta. Il difetto di rustls
+# abilita aws-lc-rs (un secondo provider, con C e CMake), la registrazione
+# tramite `log` e TLS 1.2: nessuna delle tre entra. Restano `ring` (il provider
+# scelto da Giuseppe LISI) e `std`. Le chiavi pubbliche nude (RFC 7250) esistono
+# solo in TLS 1.3, e le due estremita' sono questo prodotto.
+#
+# 0.23.46 e' la versione MINIMA: corregge RUSTSEC-2026-0346, -0347, -0348 e
+# -0349 (DEC-398); la 0.23.45 correggeva RUSTSEC-2026-0285.
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std"] }
+# Serve direttamente solo per generare la chiave Ed25519 dell'Hub e per
+# ricavarne la parte pubblica: il resto passa da rustls. Nessuna funzionalita'
+# accesa oltre al predefinito `alloc`, che la generazione PKCS#8 richiede.
+# RUSTSEC-2025-0009 e' corretta da 0.17.12; RUSTSEC-2025-0007 e' ritirata.
+ring = "0.17.14"
+slint = { version = "=1.17.1", features = ["raw-window-handle-06"] }
+slint-build = "=1.17.1"
+# Legge il catalogo delle traduzioni a tempo di compilazione, per i testi che
+# nascono nel Rust (I18N-01, ADR-0197). E' la stessa versione che slint-build
+# usa per incorporarlo nell'interfaccia: nessun lettore scritto a mano.
+rspolib = "=0.1.2"
+thiserror = "2.0.19"
+# Forma Unicode NFC: due termini identici a vedersi possono essere sequenze di
+# byte diverse, e deduplicare senza normalizzare li lascerebbe entrambi.
+# Mantenuto dal gruppo unicode-rs, licenza MIT OR Apache-2.0.
+unicode-normalization = "0.1.24"
+# Gli identificativi STIX 2.1 (ADR-0057, STIX-01). Lo standard impone un UUID
+# versione 5 sugli osservabili, che si costruisce su SHA-1: `sha2` c'e', `sha1`
+# no, e una primitiva crittografica scritta in casa e' codice nuovo che nessuno
+# ha esercitato dentro un prodotto che produce atti.
+#
+# `uuid` 1.24 e' GIA' nel file di blocco come dipendenza transitiva di
+# accesskit, raggiunto tramite Slint: qui diventa diretta per `lisi-core` e si
+# accende la sola feature `v5`, che porta `sha1_smol` (MIT OR Apache-2.0, senza
+# dipendenze proprie). Nessuna feature casuale: il prodotto non genera UUID
+# versione 4, perche' un identificativo casuale renderebbe l'esportazione
+# irriproducibile.
+uuid = { version = "1.24.0", default-features = false, features = ["v5"] }
+tracing = "0.1.41"
+tracing-appender = "0.2.3"
+tracing-subscriber = "0.3.20"
+
+# I simboli di debug del programma grafico hanno superato il limite del database
+# dei simboli di MSVC (LNK1140, 2026-10-01, PR-14): il codice che Slint genera
+# per trentadue schermate è molto. Per il solo pacchetto dell'interfaccia, in
+# sviluppo e nelle prove, bastano le tabelle delle righe — i messaggi di errore
+# e le tracce dicono ancora file e riga. Il resto dello spazio di lavoro
+# conserva i simboli completi, e la costruzione di rilascio non cambia.
+[profile.dev.package.lisi-telegram-monitor]
+debug = "line-tables-only"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+panic = "abort"
+strip = "symbols"

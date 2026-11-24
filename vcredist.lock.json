@@ -1,0 +1,16 @@
+{
+    "_commento":  [
+                      "Fissa il redistribuibile Visual C++ ridistribuito dal bootstrapper.",
+                      "Il collegamento aka.ms punta sempre alla versione corrente: l\u0027impronta",
+                      "e\u0027 l\u0027unica ancora. Una differenza va accettata come decisione, non",
+                      "subita in silenzio."
+                  ],
+    "origine":  "https://aka.ms/vs/17/release/vc_redist.x64.exe",
+    "file":  "vc_redist.x64.exe",
+    "versione":  "14.44.35211.0",
+    "sha256":  "cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b",
+    "dimensione":  25635768,
+    "scaricato":  "2026-08-10",
+    "licenza":  "Microsoft Visual C++ Redistributable, ridistribuibile secondo i termini di Visual Studio",
+    "perche":  "tdjson.dll importa MSVCP140.dll, VCRUNTIME140.dll e VCRUNTIME140_1.dll"
+}
