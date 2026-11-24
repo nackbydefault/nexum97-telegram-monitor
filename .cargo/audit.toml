@@ -1,0 +1,34 @@
+# Configurazione di `cargo audit`.
+#
+# `cargo audit` legge Cargo.lock, che elenca i pacchetti risolti per TUTTE le
+# piattaforme, e non sa quale sia il bersaglio realmente distribuito. `cargo
+# deny` lo sa, perche' deny.toml fissa targets = ["x86_64-pc-windows-msvc"], ed
+# e' per questo che i due strumenti danno esiti diversi sugli stessi dati.
+#
+# Le eccezioni qui sotto sono singole e motivate: ogni advisory nuova continua a
+# far fallire il controllo. L'analisi corrente sta in docs/SUPPLY_CHAIN.md, e una
+# prova automatica verifica che ogni identificativo accettato qui sia registrato
+# in quel documento.
+
+[advisories]
+ignore = [
+    # Le due advisory riguardano `quick-xml` **0.39.4**, e si risolvono con
+    # >= 0.41.0. La 0.39.4 e' raggiunta soltanto da `wayland-scanner`, cioe'
+    # dal protocollo Wayland, che esiste solo su Linux:
+    #
+    #   quick-xml 0.39.4  ->  wayland-scanner (proc-macro)  ->  winit  ->  Slint
+    #
+    # `cargo tree --invert quick-xml@0.39.4 --target x86_64-pc-windows-msvc` non
+    # stampa nulla.
+    #
+    # Fra DEP-01 e ZIP-01 nel lockfile c'era anche la 0.41.0, portata da
+    # `docx-rs` sul percorso Windows. Con ADR-0180 `docx-rs` e' uscita e la
+    # 0.41.0 con lei: la ragione torna quella di prima di MP-18B.
+    #
+    # Da rimuovere se il prodotto venisse mai compilato per Linux.
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195",
+    # La deroga temporanea su zip 8.6.0 (ADR-0148, le advisory 2026-0367, 0368 e
+    # 0369) e' chiusa da ADR-0180 (DEC-458, 2026-11-04): zip e' alla 9, che le
+    # corregge, e una prova di `supply_chain_guard` vieta di riaccettarle.
+]

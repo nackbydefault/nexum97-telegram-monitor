@@ -1,1 +1,16 @@
 * text=auto eol=lf
+*.rs     text eol=lf
+*.slint  text eol=lf
+*.toml   text eol=lf
+*.lock   text eol=lf
+*.md     text eol=lf
+*.json   text eol=lf
+*.sql    text eol=lf
+*.po     text eol=lf
+*.ps1    text eol=lf
+*.svg    text eol=lf
+*.yml    text eol=lf
+*.png    binary
+*.ico    binary
+*.cer    binary
+*.p7s    binary

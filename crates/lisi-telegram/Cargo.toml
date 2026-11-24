@@ -1,0 +1,47 @@
+[package]
+name = "lisi-telegram"
+description = "Connettore Telegram di NEXUM/97 e proof of concept TDLib isolato"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+# Per impostazione predefinita il crate non carica TDLib: contiene soltanto
+# l'astrazione, il mock e la macchina a stati. Il workspace deve compilare e
+# superare i test su una macchina priva di TDLib.
+default = []
+# Abilita il proof of concept che carica realmente la libreria TDLib. Richiede
+# `tdjson.dll` disponibile a runtime e la toolchain per costruirla.
+tdlib-runtime = ["dep:libloading"]
+
+[[bin]]
+name = "lisi-tdlib-poc"
+path = "src/bin/tdlib_poc.rs"
+# L'eseguibile tecnico esiste solo quando il proof of concept e' abilitato: non
+# viene mai costruito insieme all'applicazione.
+required-features = ["tdlib-runtime"]
+
+[[bin]]
+# PD-2 parte prima: quali funzioni il binario riconosce. Non richiede
+# credenziali e non contatta la rete.
+name = "lisi-tdlib-capability"
+path = "src/bin/tdlib_capability.rs"
+required-features = ["tdlib-runtime"]
+
+[[bin]]
+# PD-2 parte seconda: le cinque misure con un account reale. Richiede una
+# persona che inserisca le credenziali; non le legge da variabili d'ambiente,
+# da file ne' dalla riga di comando, e non le stampa mai.
+name = "lisi-tdlib-live-poc"
+path = "src/bin/tdlib_live_poc.rs"
+required-features = ["tdlib-runtime"]
+
+[dependencies]
+lisi-core.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+# Caricamento esplicito e controllato della DLL, solo con la feature attiva.
+libloading = { version = "0.8.9", optional = true }

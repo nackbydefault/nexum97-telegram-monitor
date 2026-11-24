@@ -1,0 +1,117 @@
+[package]
+name = "lisi-platform"
+description = "Integrazione con il sistema operativo di NEXUM/97 (apertura sicura degli URL)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+tracing.workspace = true
+# La password dell'utente del servizio in background resta in memoria il
+# tempo di passarla a Windows, e si cancella (ADR-0203). Già nel grafo.
+zeroize.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+# Dichiarazioni generate dai metadati ufficiali Microsoft invece che scritte a
+# mano. Solo lo stretto necessario: ShellExecuteW (ADR-0018),
+# DwmSetWindowAttribute per la barra del titolo scura (ADR-0020),
+# SetThreadExecutionState per la veglia (ADR-0021) e il registro per l'avvio
+# automatico (ADR-0022).
+#
+# `Win32_Security` non serve per se': e' il gruppo in cui `windows-sys` colloca
+# `RegCreateKeyExW`, che prende un descrittore di sicurezza fra i parametri. Qui
+# quel parametro e' nullo — si eredita il descrittore predefinito della chiave
+# genitore — e nessuna API di sicurezza viene usata.
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Dwm",
+    "Win32_Security",
+    # La verifica della firma Authenticode (ADR-0037). `Win32_Security_Cryptography`
+    # non serve per se': e' la condizione con cui `windows-sys` compila le
+    # strutture di WinTrust, che portano un campo di tipo crittografico.
+    "Win32_Security_Cryptography",
+    "Win32_Security_WinTrust",
+    # Lo spazio libero sul volume dell'archivio (ADR-0054). Solo
+    # `GetDiskFreeSpaceExW`: nessuna lettura né scrittura di file passa da qui.
+    "Win32_Storage_FileSystem",
+    # `Win32_Graphics_Gdi` NON serve per se', e non si disegna nulla: e' la
+    # condizione con cui `windows-sys` compila `WNDCLASSW`, che porta un campo
+    # `HBRUSH` per lo sfondo. La finestra del vassoio e' di soli messaggi e non
+    # ha sfondo: quel campo resta nullo (ADR-0063). Stessa ragione per cui
+    # `Win32_Security` e' presente per `RegCreateKeyExW`.
+    "Win32_Graphics_Gdi",
+    # La porta verso la rete (ADR-0067): WinHTTP, cioe' l'HTTP del sistema
+    # operativo. Non e' una dipendenza nuova nel grafo — e' un gruppo in piu'
+    # della crate gia' presente — ed e' la scelta che evita una SECONDA pila TLS
+    # in Rust con un secondo insieme di radici di fiducia, e che fa conoscere al
+    # prodotto il proxy dell'ufficio, perche' e' quello di Windows.
+    "Win32_Networking_WinHttp",
+    # Il servizio del monitoraggio in background (ADR-0203): il nome dell'utente
+    # con il dominio davanti, con cui si riconosce la sua sessione.
+    "Win32_Security_Authentication_Identity",
+    # L'installazione del servizio (ADR-0203, decisione 9): la finestra di
+    # Windows che chiede la password, i permessi del servizio scritti in SDDL
+    # e la liberazione del pacchetto che quella finestra restituisce.
+    "Win32_Security_Authorization",
+    "Win32_Security_Credentials",
+    "Win32_System_Com",
+    # La risoluzione degli indicatori dal PC (ADR-0202): solo `DnsQuery_W` e
+    # `DnsFree`, con il risolutore configurato sulla postazione. Un gruppo in
+    # più della crate già presente, non una dipendenza nuova.
+    "Win32_NetworkManagement_Dns",
+    # L'handle del modulo corrente, per la finestra di soli messaggi del
+    # vassoio e per l'icona incorporata nell'eseguibile (ADR-0063). Solo
+    # `GetModuleHandleW`: nessuna libreria viene caricata da qui.
+    "Win32_System_LibraryLoader",
+    "Win32_System_Power",
+    "Win32_System_Registry",
+    # Il servizio del monitoraggio in background (ADR-0203): le sessioni di
+    # Windows, per sapere se la persona è collegata, e il gestore dei servizi,
+    # per consegnargli il processo e chiedergli lo stato. Nessuna installazione
+    # passa da qui.
+    "Win32_System_RemoteDesktop",
+    "Win32_System_Services",
+    # Lo scarto fra UTC e ora locale in un istante dato (ADR-0136): solo
+    # `GetDynamicTimeZoneInformation`, `SystemTimeToTzSpecificLocalTimeEx` e le
+    # due conversioni fra FILETIME e SYSTEMTIME. Nessun orologio viene impostato.
+    "Win32_System_Time",
+    # L'installazione del servizio (ADR-0203): il token del processo, per
+    # sapere se ha i permessi dell'amministratore, e l'attesa del processo
+    # avviato con quei permessi.
+    "Win32_System_Threading",
+    # L'icona nell'area di notifica (ADR-0063). `Shell_NotifyIconW` sta qui, ed
+    # e' lo stesso gruppo gia' presente per `ShellExecuteW`.
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+# Il riquadro di avviso di Windows (ADR-0025). E' una crate DIVERSA da
+# `windows-sys`, e non e' una duplicazione: `windows-sys` espone le API Win32
+# come funzioni C, `windows` espone quelle WinRT come oggetti. Il toast e' WinRT
+# e non esiste in Win32, quindi non c'era modo di ottenerlo con la crate gia'
+# presente.
+#
+# Solo tre gruppi, non l'intera superficie: le notifiche, il DOM XML con cui si
+# compone il toast, e le fondamenta comuni.
+windows = { version = "0.62.2", features = [
+    "Data_Xml_Dom",
+    "Foundation",
+    "UI_Notifications",
+    # La preferenza di accessibilita' sulle animazioni (DEC-217). E' la stessa
+    # che SPI_GETCLIENTAREAANIMATION restituisce, esposta come oggetto: non
+    # serve `unsafe`.
+    "UI_ViewManagement",
+    # La versione di Windows in esecuzione (ADR-0039). `AnalyticsInfo` la espone
+    # come oggetto WinRT: non serve `unsafe`, e non serve leggere il registro,
+    # dove i valori di versione sono noti per mentire alle applicazioni vecchie.
+    "System_Profile",
+] }
+
+[dev-dependencies]
+# Serve solo alle prove della verifica della firma (ADR-0037): un file vero,
+# non firmato, in una cartella che si cancella da se'.
+tempfile = "3.24.0"

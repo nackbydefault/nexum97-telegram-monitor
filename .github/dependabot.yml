@@ -1,4 +1,6 @@
-# Nessuna dipendenza in questa repository: solo le azioni, se un giorno ce ne saranno.
+# Le dipendenze Rust si aggiornano nell'archivio del progetto e arrivano qui con la copia
+# esportata del codice: per Cargo valgono gli avvisi di sicurezza di Dependabot, senza
+# richieste di modifica automatiche. Qui si aggiornano soltanto le azioni, se ce ne saranno.
 version: 2
 updates:
   - package-ecosystem: "github-actions"

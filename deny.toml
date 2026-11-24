@@ -1,0 +1,121 @@
+# Valuta il grafo del solo target realmente distribuito. Cargo.lock elenca i
+# pacchetti risolti per tutte le piattaforme: senza questo vincolo il controllo
+# segnalerebbe crate che non finiscono mai nel binario Windows. La verifica e'
+# documentata in docs/validation/M0_SUPPLY_CHAIN_AUDIT.md.
+[graph]
+targets = ["x86_64-pc-windows-msvc"]
+
+[advisories]
+# Rischio residuo accettato in modo esplicito, non silenziato in blocco.
+# Ogni nuova advisory continua a far fallire il controllo: sono elencati solo
+# gli identificativi gia' analizzati.
+#
+# rustybuzz e ttf-parser sono raggiunti in modo transitivo attraverso Slint
+# (usvg -> resvg) e non sono sostituibili dal progetto. "Non manutenuto" non e'
+# una vulnerabilita': indica che eventuali difetti futuri potrebbero non essere
+# corretti a monte. L'esposizione attuale e' nulla perche' la Milestone 0 non
+# riceve dati remoti e Slint elabora solo risorse incluse nel binario.
+#
+# Da rivalutare a ogni aggiornamento di Slint e, in modo vincolante, dalla
+# Milestone 4 in avanti, quando contenuti Telegram non attendibili potrebbero
+# raggiungere componenti di rendering o parsing.
+ignore = [
+    "RUSTSEC-2026-0206", # rustybuzz non manutenuto, presente a runtime
+    "RUSTSEC-2026-0192", # ttf-parser non manutenuto, presente a runtime
+    # paste e' una proc-macro: agisce solo a tempo di compilazione tramite
+    # pulp -> exr -> image -> i-slint-compiler e non produce codice proprio nel
+    # binario distribuito. Rischio inferiore ai due precedenti.
+    "RUSTSEC-2024-0436", # paste non manutenuto, solo a compile time
+    # pin-utils arriva da spin_on, che usano soltanto slint-build (dipendenza di
+    # compilazione) e slint-macros (proc-macro): non entra nel binario. Nessuna
+    # versione corretta. DEC-462, autorizzata dal committente il 2026-11-05;
+    # da rivalutare a ogni aggiornamento di Slint (HVQ-149).
+    "RUSTSEC-2026-0441", # pin-utils non manutenuto, solo a compile time
+    # La deroga temporanea su zip 8.6.0 (ADR-0148, le advisory 2026-0367, 0368 e
+    # 0369) e' chiusa da ADR-0180 (DEC-458, 2026-11-04): zip e' alla 9, che le
+    # corregge, e una prova di `supply_chain_guard` vieta di riaccettarle.
+]
+
+[licenses]
+confidence-threshold = 0.93
+# I crate del workspace dichiarano "LicenseRef-LISI-Proprietary" (ADR-0007), il
+# cui testo sta in LICENSE e non in un identificatore SPDX riconosciuto. Poiche'
+# hanno publish = false, cargo-deny li tratta come privati e non ne verifica
+# l'identificatore. L'opzione riguarda soltanto i crate non pubblicati di questo
+# workspace e non allenta in alcun modo i controlli sulle dipendenze di terze
+# parti, che restano soggette alla allow-list qui sotto.
+private = { ignore = true }
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    # Boost Software License 1.0, approvata OSI e permissiva: consente l'uso in
+    # software proprietario e non richiede attribuzione per la sola distribuzione
+    # binaria. Da non confondere con BUSL-1.1 (Business Source License), che e'
+    # restrittiva e resta non ammessa. Richiesta da clipboard-win e error-code,
+    # raggiunti tramite Slint per la gestione degli appunti su Windows, e da
+    # TDLib stessa quando la libreria nativa verra' distribuita (ADR-0008).
+    "BSL-1.0",
+    # Richiesta da libloading, usato dal proof of concept TDLib per caricare
+    # esplicitamente tdjson.dll a runtime invece di collegarla staticamente.
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Zlib",
+    # Slint e i crate i-slint-* sono a tripla licenza
+    # "GPL-3.0-only OR LicenseRef-Slint-Royalty-free-2.0 OR LicenseRef-Slint-Software-3.0".
+    # Si adotta la licenza royalty-free, che copre le applicazioni desktop a titolo gratuito
+    # e impone una condizione di attribuzione: vedere docs/adr/ADR-0005-SLINT-LICENSING.md.
+    # Decisione confermata da Giuseppe LISI il 2026-07-21: la licenza royalty-free
+    # e' adottata e l'attribuzione e' resa nella schermata "Informazioni e licenze".
+    # Non ampliare questa lista per far passare il controllo senza un ADR corrispondente.
+    "LicenseRef-Slint-Royalty-free-2.0",
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+# Motori di inferenza, runtime di modelli e librerie di embedding: vietati in
+# modo permanente da ADR-0048. NEXUM/97 non usa intelligenza artificiale.
+#
+# **Questa e' la guardia debole, e l'ADR lo dichiara.** Un elenco di nomi ferma
+# l'aggiunta distratta e nient'altro: non copre cio' che non nomina, e in questo
+# progetto UX-02 ha gia' mostrato che un elenco chiuso lascia passare proprio il
+# difetto che esiste per fermare. La guardia forte e' un'altra, e non e' un
+# elenco: il grafo delle dipendenze non contiene alcun client HTTP ne' alcuna
+# libreria TLS in Rust, quindi nessun percorso di codice Rust del prodotto puo'
+# raggiungere un servizio di inferenza. La verifica sta in
+# crates/lisi-app/src/no_ai_guard.rs.
+#
+# Non ampliare ne' ridurre questo elenco senza passare da ADR-0048.
+deny = [
+    "async-openai",
+    "openai-api-rs",
+    "anthropic-sdk",
+    "llm",
+    "llama-cpp-2",
+    "llama_cpp",
+    "candle-core",
+    "candle-nn",
+    "candle-transformers",
+    "ort",
+    "onnxruntime",
+    "tract-core",
+    "tract-onnx",
+    "tch",
+    "burn",
+    "tokenizers",
+    "rust-bert",
+    "fastembed",
+    "hf-hub",
+    "qdrant-client",
+    "instant-distance",
+    "hnsw_rs",
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

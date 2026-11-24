@@ -1,0 +1,87 @@
+{
+  "$commento": [
+    "La politica della fotografia CVE/NVD (ADR-0060).",
+    "",
+    "QUI NON CI SONO IMPRONTE, E NON E' UNA DIMENTICANZA.",
+    "",
+    "Le fotografie annuali di NVD sono file VIVI: la pagina ufficiale dice che",
+    "«ogni feed e' aggiornato ogni notte, ma solo se il contenuto e' cambiato».",
+    "L'anno in corso cambia quasi ogni giorno; anche il 2003 e' stato riscritto",
+    "nell'agosto 2026, perche' una CVE vecchia e' stata modificata.",
+    "",
+    "Fissare qui la loro impronta produrrebbe uno script che fallisce ogni",
+    "giorno, e chi vede fallire una verifica ogni giorno smette di guardarla: e'",
+    "il modo in cui una verifica muore, non tolta ma ignorata.",
+    "",
+    "L'integrita' viene dalla FONTE, al momento dell'acquisizione. NVD pubblica",
+    "accanto a ogni fotografia un file `.meta` con la PROPRIA SHA-256 del",
+    "contenuto DECOMPRESSO, e scripts/fetch-cve.ps1 la usa. E' una provenienza",
+    "piu' forte di quella di ATT&CK, non piu' debole: l'impronta non e' nostra.",
+    "",
+    "Cio' che questo file fissa e' la POLITICA: quali anni, quale schema, quale",
+    "fonte, e da quale indirizzo. L'impronta di cio' che e' stato davvero",
+    "acquisito viene registrata DENTRO la fotografia, dove e' l'identita' di quel",
+    "momento e non un valore da riconfrontare per sempre.",
+    "",
+    "ALLARGARE LA COPERTURA E' AGGIUNGERE UNA RIGA A `anni` E RIESEGUIRE LO",
+    "SCRIPT. Il catalogo intero, dal 2002, sta in circa 217 MB compressi."
+  ],
+  "generato": "2026-09-10",
+  "fonte": {
+    "nome": "NVD — National Vulnerability Database (NIST)",
+    "schema": "NVD_CVE 2.0",
+    "base_url": "https://nvd.nist.gov/feeds/json/cve/2.0",
+    "documentazione_primaria": "https://nvd.nist.gov/vuln/data-feeds",
+    "termini_uso_nvd": "https://nvd.nist.gov/developers/terms-of-use",
+    "termini_uso_cve": "https://www.cve.org/Legal/TermsOfUse",
+    "$nota_feed_1_1": "I feed 1.1 sono ritirati: rispondono 403. Solo 2.0."
+  },
+  "copertura": {
+    "$commento": [
+      "La scelta di partenza e' di TRE ANNI, presa in assenza di una risposta e",
+      "dichiarata come scelta in ADR-0060: e' proporzionata a un primo passo e",
+      "copre cio' di cui si parla oggi.",
+      "",
+      "Cio' che rende la scelta sostenibile non e' la sua misura: e' che la",
+      "COPERTURA SI DICHIARA. Una fotografia di tre anni che dice di coprirne tre",
+      "e' onesta; una di venti che non dice quali e' pericolosa.",
+      "",
+      "Una CVE fuori da questi anni NON e' «sconosciuta»: e' «fuori dalla",
+      "copertura di questa fotografia», e il prodotto tiene le due cose distinte."
+    ],
+    "anni": [2024, 2025, 2026],
+    "$misura_indicativa": "circa 74 MB compressi, circa 700 MB decompressi"
+  },
+  "acquisizione": {
+    "cartella": "assets/cve",
+    "file_per_anno": "nvdcve-2.0-{anno}.json",
+    "archivio_per_anno": "nvdcve-2.0-{anno}.json.zip",
+    "meta_per_anno": "nvdcve-2.0-{anno}.meta",
+    "$integrita": "La SHA-256 del file decompresso e' quella dichiarata dal `.meta` di NVD. Un file che non corrisponde NON viene tenuto."
+  },
+  "licenza": {
+    "$commento": [
+      "DUE TITOLARI, DUE OBBLIGHI DIVERSI, ED E' IMPORTANTE NON CONFONDERLI.",
+      "",
+      "I record CVE sono di MITRE, e la loro licenza chiede di riprodurre la",
+      "designazione di copyright in ogni copia. Il servizio NVD e' del NIST, e i",
+      "suoi termini chiedono di NON attribuire a NVD un contenuto modificato.",
+      "",
+      "Da qui la regola che governa il codice: una descrizione CVE si conserva",
+      "INTERA, oppure quel record non entra. Troncarla e continuare a dire",
+      "«fonte: NVD» sarebbe attribuire a NVD un testo che NVD non ha scritto."
+    ],
+    "cve": {
+      "titolare": "The MITRE Corporation",
+      "identificativo": "LicenseRef-CVE-Terms-of-Use",
+      "obbligo": "reproduce MITRE's copyright designation and this license in any such copy",
+      "consente_opere_derivate": true
+    },
+    "nvd": {
+      "titolare": "National Institute of Standards and Technology (NIST)",
+      "vincolo": "If you modify the content accessed through the API, you may not attribute the source as the NVD.",
+      "attribuzione_richiesta_per_le_api": "This product uses the NVD API but is not endorsed or certified by the NVD.",
+      "$nota_attribuzione": "Quella formula riguarda chi usa le API. NEXUM usa le fotografie statiche, non le API: ripeterla parola per parola direbbe una cosa falsa. La fotografia dichiara invece la fonte e il non-avallo, che e' cio' che quella formula protegge."
+    }
+  }
+}

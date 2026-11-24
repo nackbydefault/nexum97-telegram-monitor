@@ -1,0 +1,29 @@
+{
+  "format": "nexum-dictionary",
+  "format_version": 1,
+  "name": "Esempio — contesto riduttivo",
+  "description": "Dizionario d'esempio della copia pubblica del codice: termini che abbassano il peso di un riscontro, come una smentita. Non è un dizionario operativo; si seleziona insieme agli altri, mai da solo.",
+  "scope": "global",
+  "version": {
+    "number": 1,
+    "note": "Prima versione dell'esempio."
+  },
+  "terms": [
+    {
+      "text": "non e' vero che",
+      "category": "negazione",
+      "language": "it",
+      "match_mode": "phrase",
+      "suggested_level": -2,
+      "note": "Introduce la smentita di ciò che segue."
+    },
+    {
+      "text": "per gioco",
+      "category": "finzione",
+      "language": "it",
+      "match_mode": "phrase",
+      "suggested_level": -1,
+      "note": "Dice che ciò che segue non è serio."
+    }
+  ]
+}

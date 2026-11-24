@@ -1,0 +1,167 @@
+// Marchio di NEXUM/97 — il segno approvato (3b).
+//
+// **Due archi speculari** formano la lente; l'**iride e' un anello aperto**, un
+// arco pieno piu' un arco al 55% di opacita'; la **pupilla e' un punto pieno**.
+// Tre colori, e nessun altro: lente `frame`, iride `cyan`, pupilla `text`.
+//
+// Questa e' la geometria di `assets/logo.svg` del sistema grafico approvato,
+// trascritta comando per comando su una viewbox 64x64. **Non va ridisegnata ne'
+// ricolorata**, e in particolare non cambia colore per dire che qualcosa e' in
+// corso: lo stato lo dicono le parole accanto al marchio e il radar.
+//
+// La stesura precedente disegnava un occhio diverso - mandorla, iride ad archi
+// concentrici, raggi sopra e sotto, riflesso quadrato, nucleo che pulsava. Era
+// il segno che il sistema approvato ha **superato** (conservato come
+// `nexum97-eye-pixel.svg` nel progetto di Design). Il lampeggio e' uscito con
+// esso: il sistema approvato vieta il lampeggio, e l'unica animazione in ciclo
+// del prodotto e' il respiro dell'indicatore di connessione.
+//
+// Vincoli che restano non negoziabili:
+//
+// - **nessuno stemma istituzionale, nessuno scudo.** Il prodotto non e'
+//   emanazione di alcuna istituzione, e un segno che lo lasciasse intendere
+//   sarebbe una dichiarazione falsa resa in forma grafica;
+// - **nessun uso di marchi Telegram**, in nessun punto del prodotto: niente
+//   aeroplano di carta, niente logo. L'affinita' sta nelle superfici e nei blu
+//   dell'interazione, e finisce li';
+// - **nessun occhio realistico.** Nessuna palpebra, nessuna ciglia, nessuna
+//   sfumatura organica. La lente e' un contorno geometrico: e' uno strumento
+//   ottico, non un organo.
+//
+// E' disegnato con forme, non con un'immagine: nessun file da caricare, nessuna
+// risorsa che possa mancare.
+
+import { Palette } from "tokens.slint";
+
+export component BrandMark inherits Rectangle {
+    // Lato del segno.
+    in property <length> size: 58px;
+
+    // Conservata per i chiamanti che la passano ancora. **Non ha effetto sul
+    // marchio**, che il sistema approvato vieta di ricolorare: lo stato di
+    // esercizio si legge dal radar e dalla riga di testo che gli sta accanto.
+    // MV-2 toglie la proprieta' e i suoi chiamanti.
+    in property <bool> active: false;
+
+    // Peso del tratto compensato per banda di dimensione, cosi' che il segno
+    // regga fino a 16px. Sotto i 20px il disegno **cambia**: due soli archi e
+    // un'iride piena, senza pupilla separata - a quella dimensione un anello
+    // aperto con un punto dentro diventa una macchia.
+    //
+    // I pesi sono quelli del sistema approvato: 2,5 a 64px, 4 a 32px, 6 a 24px,
+    // 8 nel taglio semplificato. Espressi come frazione del lato, perche' il
+    // tratto e' proporzionale al segno e non alla viewbox.
+    property <bool> simplified: root.size < 20px;
+    property <float> stroke-units: root.size < 28px ? 6 : root.size < 48px ? 4 : 2.5;
+    property <length> stroke: root.size * root.stroke-units / 64;
+
+    width: root.size;
+    height: root.size;
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+
+    // ============================================================ taglio pieno
+    // Da 20px in su: lente, iride ad anello aperto, pupilla.
+
+    // ----------------------------------------------------------------- lente
+    // Arco superiore.
+    if !root.simplified: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 64;
+        viewbox-height: 64;
+        commands: "M6 32C14 20 22.8 14 32 14s18 6 26 18";
+        fill: transparent;
+        stroke: Palette.frame;
+        stroke-width: root.stroke;
+    }
+
+    // Arco inferiore, speculare.
+    if !root.simplified: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 64;
+        viewbox-height: 64;
+        commands: "M6 32c8 12 16.8 18 26 18s18-6 26-18";
+        fill: transparent;
+        stroke: Palette.frame;
+        stroke-width: root.stroke;
+    }
+
+    // ----------------------------------------------------------------- iride
+    // Anello **aperto**: un anello chiuso direbbe «bersaglio»; un arco
+    // interrotto dice «in ascolto», e sono due affermazioni diverse.
+    if !root.simplified: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 64;
+        viewbox-height: 64;
+        commands: "M32 22a10 10 0 0 1 0 20";
+        fill: transparent;
+        stroke: Palette.cyan;
+        stroke-width: root.stroke;
+    }
+
+    // Il secondo arco al 55%. Insieme all'anello di fuoco e' **l'unico valore
+    // non opaco del sistema**.
+    if !root.simplified: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 64;
+        viewbox-height: 64;
+        commands: "M32 42a10 10 0 0 1-7-17";
+        fill: transparent;
+        stroke: Palette.cyan;
+        stroke-width: root.stroke;
+        opacity: 0.55;
+    }
+
+    // --------------------------------------------------------------- pupilla
+    // Punto pieno, raggio 3,4 sulla viewbox da 64.
+    if !root.simplified: Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.size * 6.8 / 64;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: Palette.text;
+    }
+
+    // ===================================================== taglio semplificato
+    // Sotto i 20px: due archi piu' pesanti e un'iride piena. E' **un disegno
+    // diverso**, non una copia rimpicciolita.
+
+    if root.simplified: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 64;
+        viewbox-height: 64;
+        commands: "M8 32C15 22 23 17 32 17s17 5 24 15";
+        fill: transparent;
+        stroke: Palette.frame;
+        stroke-width: root.size * 8 / 64;
+    }
+
+    if root.simplified: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 64;
+        viewbox-height: 64;
+        commands: "M8 32c7 10 15 15 24 15s17-5 24-15";
+        fill: transparent;
+        stroke: Palette.frame;
+        stroke-width: root.size * 8 / 64;
+    }
+
+    if root.simplified: Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.size * 14 / 64;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: Palette.cyan;
+    }
+
+    accessible-role: image;
+    accessible-label: @tr("Marchio NEXUM/97");
+}

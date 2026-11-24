@@ -1,0 +1,104 @@
+{
+  "$commento": [
+    "La politica della fotografia CISA KEV (ADR-0061).",
+    "",
+    "QUI NON C'E' UN'IMPRONTA, E NON E' UNA DIMENTICANZA.",
+    "",
+    "Il catalogo KEV e' un file VIVO: la sua versione E' la data del giorno di",
+    "rilascio - `2026.09.10` - e cambia piu' volte alla settimana. Fissarne",
+    "l'impronta qui produrrebbe uno script che fallisce quasi ogni giorno, e chi",
+    "vede fallire una verifica ogni giorno smette di guardarla.",
+    "",
+    "E A DIFFERENZA DI NVD, CISA NON NE PUBBLICA UNA.",
+    "",
+    "La pagina dei download offre CSV, JSON, schema, vista di stampa e licenza.",
+    "Nient'altro. Non esiste un `.meta` come quello di NVD, e non si finge che",
+    "esista: cio' che si verifica e' scritto per esteso in ADR-0061, quinta",
+    "decisione, ed e' TRE COSE, nessuna delle quali e' un'impronta della fonte.",
+    "",
+    "  1. IL TRASPORTO: HTTPS verso www.cisa.gov, TLS verificato. E' la sola",
+    "     cosa che lega quel contenuto a quell'ente.",
+    "  2. LA COERENZA INTERNA: il catalogo dichiara `count`, e il prodotto",
+    "     rifiuta un file il cui conteggio non corrisponda alle proprie voci.",
+    "     E' l'unica integrita' che la fonte offre DI SE'.",
+    "  3. L'IMPRONTA DI CIO' CHE E' STATO ACQUISITO, calcolata DA NOI e scritta",
+    "     accanto al file. Dice una cosa sola: che il file non e' cambiato da",
+    "     quando e' stato preso. NON E' UNA PROVENIENZA, e non va raccontata",
+    "     come tale."
+  ],
+  "generato": "2026-09-11",
+  "fonte": {
+    "nome": "CISA — Known Exploited Vulnerabilities Catalog",
+    "ente": "Cybersecurity and Infrastructure Security Agency (CISA)",
+    "catalogo_url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+    "schema_url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities_schema.json",
+    "documentazione_primaria": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+    "licenza_url": "https://www.cisa.gov/sites/default/files/licenses/kev/license.txt",
+    "$nota_schema": "Lo schema pubblicato e' aggiornato al 2024-06-25 e NON dichiara `forensicTriage`, che la voce reale del 2026-09-10 porta. La fonte cambia piu' in fretta del proprio schema: un campo sconosciuto non fa fallire nulla."
+  },
+  "acquisizione": {
+    "cartella": "assets/kev",
+    "file": "known_exploited_vulnerabilities.json",
+    "impronta_acquisita": "known_exploited_vulnerabilities.acquired.sha256",
+    "$nota_impronta": "Il file di impronta lo scrive scripts/fetch-kev.ps1 e dichiara dentro di se' CHI ha calcolato l'impronta: NEXUM, non CISA. Il prodotto lo riverifica all'importazione."
+  },
+  "cio_che_entra": {
+    "$commento": [
+      "Cio' che KEV AFFERMA sulla vulnerabilita'.",
+      "",
+      "La frase che il prodotto compone cita CISA come soggetto: non dice «questa",
+      "vulnerabilita' e' stata sfruttata», dice «CISA dichiara di aver constatato",
+      "uno sfruttamento in the wild, e l'ha elencata il giorno tale»."
+    ],
+    "campi": [
+      "cveID",
+      "vendorProject",
+      "product",
+      "vulnerabilityName",
+      "dateAdded",
+      "shortDescription",
+      "knownRansomwareCampaignUse"
+    ]
+  },
+  "cio_che_non_entra": {
+    "$commento": [
+      "CIO' CHE KEV ORDINA NON ENTRA, E NON ESISTE UNA COLONNA IN CUI METTERLO.",
+      "",
+      "`requiredAction`, `dueDate` e `forensicTriage` discendono da una direttiva",
+      "operativa vincolante - BOD 26-04 - che obbliga le AGENZIE FEDERALI CIVILI",
+      "STATUNITENSI. Non riguardano questo ufficio. Mostrarli senza dirlo",
+      "suggerirebbe un obbligo che non esiste; mostrarli dicendolo richiederebbe",
+      "un'avvertenza che viaggi per sempre, e un'avvertenza che deve viaggiare per",
+      "sempre prima o poi resta indietro.",
+      "",
+      "`cwes` e' una tassonomia di debolezze, e non serve alla domanda per cui la",
+      "fotografia esiste. `notes` e' una sequenza di collegamenti alla direttiva e",
+      "agli avvisi: un URL stampato accanto a un messaggio monitorato e' una",
+      "superficie su cui qualcuno fa clic."
+    ],
+    "campi": ["requiredAction", "dueDate", "forensicTriage", "cwes", "notes"]
+  },
+  "limiti": {
+    "$commento": "Il contenuto e' ostile finche' non e' convalidato. Il catalogo reale pesa 1 714 060 byte e porta 1705 voci: i tetti non limitano CISA, rifiutano un file che dice di essere un catalogo KEV e non lo e'.",
+    "byte_massimi": 67108864,
+    "voci_massime": 200000
+  },
+  "licenza": {
+    "$commento": [
+      "CC0 1.0 Universal, LETTA SULLA FONTE: CISA rinuncia a ogni diritto",
+      "d'autore e connesso sul catalogo.",
+      "",
+      "NESSUN OBBLIGO DI ATTRIBUZIONE, E NON E' UNA RAGIONE PER NON ATTRIBUIRE.",
+      "La fotografia registra comunque la fonte, perche' la frase che il prodotto",
+      "compone deve poter nominare CHI AFFERMA. L'attribuzione qui serve alla",
+      "verita' della frase, non alla licenza.",
+      "",
+      "CC0 non rinuncia a marchi e brevetti, e offre il lavoro «as-is» senza",
+      "garanzie di accuratezza: un'altra ragione per citare invece di affermare."
+    ],
+    "identificativo": "CC0-1.0",
+    "titolare": "Cybersecurity and Infrastructure Security Agency (CISA)",
+    "obbligo_di_attribuzione": false,
+    "attribuzione_registrata": "CISA — Known Exploited Vulnerabilities Catalog (CC0 1.0 Universal)"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "format": "nexum-dictionary",
+  "format_version": 1,
+  "name": "Esempio — termini",
+  "description": "Dizionario d'esempio della copia pubblica del codice: mostra il formato con termini neutri, e non è un dizionario operativo. Ogni ufficio scrive o importa i propri dizionari.",
+  "scope": "global",
+  "version": {
+    "number": 1,
+    "note": "Prima versione dell'esempio."
+  },
+  "terms": [
+    {
+      "text": "parola di esempio",
+      "category": "esempio",
+      "language": "it",
+      "match_mode": "phrase",
+      "suggested_level": 1,
+      "note": "Una frase intera: riscontra soltanto queste parole, in quest'ordine."
+    },
+    {
+      "text": "esempio",
+      "category": "esempio",
+      "language": "it",
+      "match_mode": "normalized_word",
+      "suggested_level": 1,
+      "note": "Una parola normalizzata: riscontra anche le maiuscole e gli accenti diversi."
+    },
+    {
+      "text": "Prova",
+      "category": "esempio",
+      "language": "it",
+      "match_mode": "exact_word",
+      "suggested_level": 2,
+      "note": "Una parola esatta: riscontra soltanto questa forma."
+    }
+  ]
+}
