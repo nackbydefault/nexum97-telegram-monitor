@@ -1,20 +1,46 @@
 NEXUM/97 — Telegram Intelligence Monitor
-Copyright (c) 2026 Giuseppe LISI. Tutti i diritti riservati. All rights reserved.
+Copyright (c) 2026 Giuseppe LISI. Licenza Apache 2.0.
 
 Ideazione e progettazione: Giuseppe LISI
 
-Il codice sorgente è pubblicato per consultazione, con la licenza proprietaria del file LICENSE.
-La pubblicazione non concede il diritto di usare, copiare, modificare o ridistribuire il
-programma, in tutto o in parte, senza l'autorizzazione scritta del titolare.
+Questo software è distribuito con la Apache License, Version 2.0: il testo integrale è nel file
+LICENSE. This software is licensed under the Apache License, Version 2.0 (see LICENSE).
 
-The source code is published for reference only, under the proprietary licence in LICENSE.
-Publication grants no right to use, copy, modify or redistribute the program, in whole or in
-part, without the written authorization of the right holder.
+Marchi / Trademarks
+-------------------
+Il nome «NEXUM/97» e il segno dell'occhio identificano il progetto del titolare. Come dice la
+sezione 6 della licenza, la licenza non concede il permesso di usarli come marchio, salvo l'uso
+ragionevole e consueto per indicare da dove viene l'opera. I file del marchio in assets/brand si
+possono copiare e modificare con la licenza Apache 2.0 come il resto della repository.
+The name "NEXUM/97" and the eye mark identify the owner's project. As section 6 of the licence
+states, it does not grant permission to use them as trademarks, except for reasonable and
+customary use in describing the origin of the work.
 
-Il nome «NEXUM/97» e i suoi marchi non sono concessi in licenza da questa repository.
-The name "NEXUM/97" and its marks are not licensed by this repository.
+Uso legittimo / Lawful use
+--------------------------
+Il programma è pensato per il monitoraggio autorizzato di fonti Telegram accessibili a un account
+d'ufficio. Il file USO_LEGITTIMO.md lo spiega: è un'informativa, non una condizione della licenza.
+The program is designed for authorized monitoring. USO_LEGITTIMO.md explains this: it is a
+notice, not a licence condition.
 
-Componenti di terze parti / Third-party components: le dipendenze si scaricano da crates.io con
-le rispettive licenze, che prevalgono per le parti di loro pertinenza. L'interfaccia usa Slint
-con la Slint Royalty-free Desktop, Mobile, and Web Applications License 2.0. TDLib (BSL-1.0) e i
-caratteri (OFL-1.1) non sono inclusi.
+Componenti di terze parti / Third-party components
+--------------------------------------------------
+Nessun componente di terze parti è incluso in questa repository: le dipendenze si scaricano al
+momento della compilazione, ciascuna con la propria licenza.
+No third-party component is included in this repository: dependencies are downloaded at build
+time, each under its own licence.
+
+- Slint (https://slint.dev), interfaccia grafica: GPL-3.0-only OR
+  LicenseRef-Slint-Royalty-free-2.0 OR LicenseRef-Slint-Software-3.0. Chi compila e distribuisce
+  il programma sceglie una di queste licenze e ne rispetta le condizioni. Con la licenza
+  royalty-free per applicazioni desktop serve l'attribuzione: il programma mostra il riquadro
+  AboutSlint nella schermata «Informazioni e licenze». Il codice di questa repository, con la
+  licenza Apache 2.0, si può usare anche in un programma distribuito con la GPL-3.0.
+- TDLib (https://core.telegram.org/tdlib): Boost Software License 1.0. Non inclusa; la versione
+  è fissata per impronta in tdlib.lock.json e la libreria si carica solo con la funzione
+  tdlib-runtime.
+- Caratteri Sora e IBM Plex Mono: SIL Open Font License 1.1. Non inclusi; li scarica e li
+  verifica per impronta scripts/fetch-fonts.ps1.
+- Le altre dipendenze Rust (crates.io), con versioni fissate in Cargo.lock, hanno licenze MIT,
+  Apache-2.0, Apache-2.0 WITH LLVM-exception, BSD-2-Clause, BSD-3-Clause, BSL-1.0, ISC,
+  Unicode-3.0 o Zlib: l'elenco ammesso è in deny.toml e lo controlla cargo deny.

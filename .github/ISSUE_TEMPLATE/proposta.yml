@@ -1,0 +1,31 @@
+name: Proposta / Proposal
+description: Un miglioramento o una funzione nuova. / An improvement or a new feature.
+labels: ["proposta"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Prima di scrivere, leggi in CONTRIBUTING.md le regole di disegno del programma: una
+        proposta che le toglie non viene accolta.
+        Please read the design rules in CONTRIBUTING.md first.
+  - type: textarea
+    id: problema
+    attributes:
+      label: Quale problema risolve / Problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Che cosa si propone / Proposal
+    validations:
+      required: true
+  - type: checkboxes
+    id: regole
+    attributes:
+      label: Regole di disegno / Design rules
+      options:
+        - label: La proposta non usa intelligenza artificiale e non aggira le API ufficiali di Telegram. / No AI, official API only.
+          required: true
+        - label: La proposta non aggiunge ingressi automatici, messaggi, reazioni né classificazioni automatiche di persone. / No automatic joining, posting, reacting or classification of people.
+          required: true

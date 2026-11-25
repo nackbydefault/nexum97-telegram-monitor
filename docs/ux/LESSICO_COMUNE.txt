@@ -198,6 +198,7 @@ anomalie
 anteprima
 anteriore
 antivirus
+apache
 aperta
 aperti
 aperto
@@ -673,6 +674,7 @@ condivisibile
 condivisione
 condiviso
 condizione
+condizioni
 condotta
 condotte
 condotti
@@ -1965,6 +1967,7 @@ pc
 pdf
 peggio
 pena
+pensato
 per
 perché
 percorsa
@@ -2440,6 +2443,7 @@ ricostruibile
 ricostruire
 ricostruisce
 ricostruito
+ridistribuire
 ridotta
 ridotto
 riduci

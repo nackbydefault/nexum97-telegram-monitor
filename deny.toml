@@ -6,6 +6,12 @@
 targets = ["x86_64-pc-windows-msvc"]
 
 [advisories]
+# Ogni avviso «non manutenuto» fa fallire, anche di una dipendenza transitiva:
+# dalla 0.22 cargo-deny controlla per difetto soltanto le dipendenze dirette
+# ("workspace"), e chrono, che arriva da Slint, sparirebbe dal controllo.
+# Scritto qui, il controllo dice la stessa cosa con ogni versione dello
+# strumento: in locale e nella CI pubblica (OSS-LICENSING-01, DEC-524).
+unmaintained = "all"
 # Rischio residuo accettato in modo esplicito, non silenziato in blocco.
 # Ogni nuova advisory continua a far fallire il controllo: sono elencati solo
 # gli identificativi gia' analizzati.
@@ -38,10 +44,9 @@ ignore = [
 
 [licenses]
 confidence-threshold = 0.93
-# I crate del workspace dichiarano "LicenseRef-LISI-Proprietary" (ADR-0007), il
-# cui testo sta in LICENSE e non in un identificatore SPDX riconosciuto. Poiche'
-# hanno publish = false, cargo-deny li tratta come privati e non ne verifica
-# l'identificatore. L'opzione riguarda soltanto i crate non pubblicati di questo
+# I crate del workspace dichiarano "Apache-2.0" (ADR-0211, che sostituisce la
+# licenza proprietaria di ADR-0007). Poiche' hanno publish = false, cargo-deny li
+# tratta come privati e non ne verifica l'identificatore. L'opzione riguarda soltanto i crate non pubblicati di questo
 # workspace e non allenta in alcun modo i controlli sulle dipendenze di terze
 # parti, che restano soggette alla allow-list qui sotto.
 private = { ignore = true }

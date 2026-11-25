@@ -4210,8 +4210,8 @@ msgstr "New report"
 msgid "{}, versione {}"
 msgstr "{}, version {}"
 
-msgid "Licenza del prodotto: {}. Il testo integrale è nel file LICENSE distribuito con l'applicazione. Software proprietario: tutti i diritti riservati, uso riservato ai soggetti autorizzati."
-msgstr "Product licence: {}. The full text is in the LICENSE file distributed with the application. Proprietary software: all rights reserved, use restricted to authorised parties."
+msgid "Licenza del prodotto: {}. Il testo integrale è nel file LICENSE distribuito con l'applicazione. Software libero: si può usare, modificare e ridistribuire alle condizioni della licenza. È pensato per il monitoraggio autorizzato."
+msgstr "Product licence: {}. The full text is in the LICENSE file distributed with the application. Free software: it can be used, modified and redistributed under the terms of the licence. It is designed for authorized monitoring."
 
 msgid "Componenti di terze parti"
 msgstr "Third-party components"
@@ -7054,8 +7054,8 @@ msgstr "Concept and design: Giuseppe LISI"
 msgid "Giuseppe LISI"
 msgstr "Giuseppe LISI"
 
-msgid "Copyright (c) 2026 Giuseppe LISI. Tutti i diritti riservati."
-msgstr "Copyright (c) 2026 Giuseppe LISI. All rights reserved."
+msgid "Copyright (c) 2026 Giuseppe LISI. Licenza Apache 2.0."
+msgstr "Copyright (c) 2026 Giuseppe LISI. Apache License 2.0."
 
 msgid "LISI Telegram Monitor"
 msgstr "LISI Telegram Monitor"
