@@ -74,6 +74,7 @@ fn contenuto(id: i64, body: &str) -> LedgerContent {
 
 fn sessione() -> LedgerSession {
     LedgerSession {
+        pauses: Vec::new(),
         label: String::from("Monitoraggio di prova"),
         started_at: Timestamp::from_millis(1_752_000_000_000),
         ended_at: Some(Timestamp::from_millis(1_752_010_800_000)),

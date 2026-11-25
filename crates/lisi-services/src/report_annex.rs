@@ -119,11 +119,11 @@ pub fn compose(input: &AnnexInput<'_>) -> NarrativeReport {
     });
 
     blocks.push(Block::Paragraph(format!(
-        "Il presente allegato rappresenta {} contenuti, cioè l'intera acquisizione \
+        "Il presente allegato rappresenta {}, cioè l'intera acquisizione \
          della sessione: vi compaiono anche i contenuti di livello 0, quelli che non \
          hanno generato alcun avviso e quelli che l'operatore non ha selezionato per \
          la relazione. Nessun contenuto è stato escluso.",
-        input.contents.len()
+        lisi_core::text::counted(input.contents.len(), "contenuto", "contenuti")
     )));
 
     blocks.push(Block::Paragraph(crate::report_narrative::origin_legend()));
@@ -174,7 +174,7 @@ pub fn compose(input: &AnnexInput<'_>) -> NarrativeReport {
     }
     // CHE COSA SI GUARDAVA (PR-05): accanto alle fonti, perché dice su che cosa
     // l'elenco dei contenuti si basa.
-    crate::report_narrative::push_coverage(&mut blocks, input.coverage);
+    crate::report_narrative::push_coverage(&mut blocks, input.coverage, &input.session.pauses);
 
     blocks.push(Block::Heading(String::from("3. I CONTENUTI")));
     if input.contents.is_empty() {
@@ -257,9 +257,9 @@ pub fn compose(input: &AnnexInput<'_>) -> NarrativeReport {
             blocks.push(Block::Lead {
                 lead: format!("{} \u{2014}", event.reason),
                 body: format!(
-                    "{} contenuti da {} fonti distinte{}. Osservati fra il {} e il {}. {} {}",
-                    event.contents,
-                    event.distinct_sources,
+                    "{} da {}{}. Osservati fra il {} e il {}. {} {}",
+                    lisi_core::text::counted(event.contents, "contenuto", "contenuti"),
+                    lisi_core::text::counted(event.distinct_sources, "fonte", "fonti distinte"),
                     if event.apparent_reposts > 0 {
                         format!(
                             ", di cui {} con testo identico a un altro del gruppo",
@@ -463,10 +463,10 @@ pub fn compose(input: &AnnexInput<'_>) -> NarrativeReport {
                         if workspace.open { "aperto" } else { "chiuso" }
                     ),
                     body: format!(
-                        "aperto da {} il {}. Contiene {} contenuti di questo monitoraggio.{}",
+                        "aperto da {} il {}. Contiene {} di questo monitoraggio.{}",
                         workspace.created_by,
                         workspace.created_at.to_readable_utc(),
-                        workspace.contents_here,
+                        lisi_core::text::counted(workspace.contents_here, "contenuto", "contenuti"),
                         workspace
                             .description
                             .as_ref()
@@ -729,11 +729,18 @@ fn push_timeline(blocks: &mut Vec<Block>, timeline: Option<&LedgerTimeline>) {
     }
 
     if timeline.rows_beyond > 0 {
-        blocks.push(Block::Paragraph(format!(
-            "La cronologia di questo gruppo comprende altre {} righe, non riprodotte nel \
-             presente documento per ragioni di estensione.",
-            timeline.rows_beyond
-        )));
+        blocks.push(Block::Paragraph(if timeline.rows_beyond == 1 {
+            String::from(
+                "La cronologia di questo gruppo comprende un'altra riga, non riprodotta nel \
+                 presente documento per ragioni di estensione.",
+            )
+        } else {
+            format!(
+                "La cronologia di questo gruppo comprende altre {} righe, non riprodotte nel \
+                 presente documento per ragioni di estensione.",
+                timeline.rows_beyond
+            )
+        }));
     }
 }
 
@@ -789,19 +796,33 @@ fn push_neighbourhood(
     }
 
     if neighbourhood.legend_beyond > 0 {
-        blocks.push(Block::Paragraph(format!(
-            "Al gruppo risultano collegate altre {} voci, non riprodotte nel presente \
-             documento per ragioni di estensione.",
-            neighbourhood.legend_beyond
-        )));
+        blocks.push(Block::Paragraph(if neighbourhood.legend_beyond == 1 {
+            String::from(
+                "Al gruppo risulta collegata un'altra voce, non riprodotta nel presente \
+                 documento per ragioni di estensione.",
+            )
+        } else {
+            format!(
+                "Al gruppo risultano collegate altre {} voci, non riprodotte nel presente \
+                 documento per ragioni di estensione.",
+                neighbourhood.legend_beyond
+            )
+        }));
     }
 
     if neighbourhood.edges_omitted > 0 {
-        blocks.push(Block::Paragraph(format!(
-            "Il vicinato conserva altri {} collegamenti oltre il tetto con cui è stato \
-             composto.",
-            neighbourhood.edges_omitted
-        )));
+        blocks.push(Block::Paragraph(if neighbourhood.edges_omitted == 1 {
+            String::from(
+                "Il vicinato conserva un altro collegamento oltre il tetto con cui è stato \
+                 composto.",
+            )
+        } else {
+            format!(
+                "Il vicinato conserva altri {} collegamenti oltre il tetto con cui è stato \
+                 composto.",
+                neighbourhood.edges_omitted
+            )
+        }));
     }
 }
 
@@ -856,10 +877,10 @@ fn push_subject(blocks: &mut Vec<Block>, position: usize, subject: &LedgerSubjec
         blocks.push(Block::Lead {
             lead: String::from("Osservato in questo monitoraggio:"),
             body: format!(
-                "{} contenuti, di cui {} con avviso, da {} fonti distinte{}.",
-                identity.contents_here,
+                "{}, di cui {} con avviso, da {}{}.",
+                lisi_core::text::counted(identity.contents_here, "contenuto", "contenuti"),
                 identity.alerts_here,
-                identity.distinct_sources_here,
+                lisi_core::text::counted(identity.distinct_sources_here, "fonte", "fonti distinte"),
                 match (identity.first_seen_here, identity.last_seen_here) {
                     (Some(primo), Some(ultimo)) => format!(
                         ", pubblicati fra il {} e il {}",
@@ -946,6 +967,7 @@ mod tests {
 
     fn sessione() -> LedgerSession {
         LedgerSession {
+            pauses: Vec::new(),
             label: String::from("Monitoraggio di prova"),
             started_at: Timestamp::from_millis(1_752_000_000_000),
             ended_at: None,

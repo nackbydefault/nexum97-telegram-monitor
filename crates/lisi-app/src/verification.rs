@@ -39,6 +39,15 @@ fn actor() -> lisi_services::ServiceResult<lisi_core::text::Actor> {
     crate::operator::audit_actor()
 }
 
+/// Dove sta il documento, per la riga dell'esito (CU01-009).
+fn folder_label(folder: &str) -> String {
+    if folder.is_empty() {
+        String::from("Nella cartella esaminata.")
+    } else {
+        format!("Nella cartella «{folder}».")
+    }
+}
+
 /// Etichetta mostrabile del verdetto.
 fn status_label(status: &VerificationStatus) -> &'static str {
     match status {
@@ -50,31 +59,58 @@ fn status_label(status: &VerificationStatus) -> &'static str {
 }
 
 /// Frase riassuntiva in testa all'elenco.
+///
+/// Conta i **documenti** e le **cartelle**, non «rapporti»: un pacchetto ha più
+/// documenti, e «su 25 rapporti» contava i file (COLLAUDO-FIX-01, CU01-009).
+/// Ogni forma è una frase intera, con il numero concordato e la sua voce nel
+/// catalogo (CU01-007, CU01-010).
 fn summary(verifications: &[Verification]) -> String {
     if verifications.is_empty() {
         return String::from("Nessun rapporto esportato da verificare.");
     }
 
+    let documenti = verifications.len();
+    let cartelle = verifications
+        .iter()
+        .map(|verification| verification.folder.as_str())
+        .collect::<std::collections::BTreeSet<_>>()
+        .len();
     let doubtful = verifications
         .iter()
         .filter(|verification| !verification.status.is_intact())
         .count();
 
-    if doubtful == 0 {
-        format!(
-            "Verificati {}: tutti integri, corrispondono al loro elenco delle impronte.",
-            lisi_core::text::counted(verifications.len(), "rapporto", "rapporti")
-        )
-    } else {
-        format!(
-            "ATTENZIONE: su {}, {doubtful} non {} al loro elenco delle impronte.",
-            lisi_core::text::counted(verifications.len(), "rapporto", "rapporti"),
-            if doubtful == 1 {
-                "corrisponde"
-            } else {
-                "corrispondono"
-            }
-        )
+    match (doubtful, documenti, cartelle) {
+        (0, 1, _) => String::from(
+            "1 documento verificato: integro, corrisponde al suo elenco delle impronte.",
+        ),
+        (0, _, 1) => format!(
+            "{documenti} documenti verificati, in una cartella: tutti integri, corrispondono al \
+             loro elenco delle impronte."
+        ),
+        (0, _, _) => format!(
+            "{documenti} documenti verificati, in {cartelle} cartelle: tutti integri, \
+             corrispondono al loro elenco delle impronte."
+        ),
+        (_, 1, _) => String::from(
+            "ATTENZIONE: l'unico documento verificato non corrisponde al suo elenco delle impronte.",
+        ),
+        (1, _, 1) => format!(
+            "ATTENZIONE: su {documenti} documenti, in una cartella, 1 non corrisponde al suo \
+             elenco delle impronte."
+        ),
+        (1, _, _) => format!(
+            "ATTENZIONE: su {documenti} documenti, in {cartelle} cartelle, 1 non corrisponde al \
+             suo elenco delle impronte."
+        ),
+        (_, _, 1) => format!(
+            "ATTENZIONE: su {documenti} documenti, in una cartella, {doubtful} non \
+             corrispondono al loro elenco delle impronte."
+        ),
+        _ => format!(
+            "ATTENZIONE: su {documenti} documenti, in {cartelle} cartelle, {doubtful} non \
+             corrispondono al loro elenco delle impronte."
+        ),
     }
 }
 
@@ -84,7 +120,8 @@ fn rows(verifications: &[Verification]) -> ModelRc<VerificationRow> {
         .iter()
         .map(|verification| VerificationRow {
             report: SharedString::from(verification.report_name.as_str()),
-            status: SharedString::from(status_label(&verification.status)),
+            folder: crate::lingua::schermo(folder_label(&verification.folder)),
+            status: crate::lingua::schermo(status_label(&verification.status)),
             ok: verification.status.is_intact(),
         })
         .collect();
@@ -144,11 +181,11 @@ fn scan(window: &AppWindow, service: &SharedVerification, altrove: Option<std::p
             let testo = if verifications.is_empty() {
                 format!(
                     "{} Cartella esaminata: {}",
-                    summary(&verifications),
+                    crate::lingua::schermo(summary(&verifications)),
                     directory.display()
                 )
             } else {
-                summary(&verifications)
+                crate::lingua::schermo(summary(&verifications)).to_string()
             };
             window.set_verification_summary(SharedString::from(testo));
         }
@@ -284,7 +321,39 @@ mod tests {
         Verification {
             report_name: String::from(name),
             status,
+            folder: String::new(),
         }
+    }
+
+    /// **Due copie dello stesso pacchetto: la riga dice la cartella, e il
+    /// riepilogo conta documenti e cartelle** (COLLAUDO-FIX-01, CU01-009).
+    ///
+    /// Vista rossa con la 0.2.2: «su 2 rapporti, 1 non corrisponde», e due
+    /// righe con lo stesso nome senza la cartella.
+    #[test]
+    fn due_copie_dello_stesso_pacchetto_si_distinguono() {
+        let nella = |cartella: &str, status| Verification {
+            folder: String::from(cartella),
+            ..verification("R-2026-000005 · Relazione_R-2026-000005.pdf", status)
+        };
+        let esiti = [
+            nella("R-2026-000005", VerificationStatus::Intact),
+            nella("copia di R-2026-000005", VerificationStatus::ReportMissing),
+        ];
+        assert_eq!(
+            summary(&esiti),
+            "ATTENZIONE: su 2 documenti, in 2 cartelle, 1 non corrisponde al suo elenco delle \
+             impronte."
+        );
+        assert_eq!(
+            super::folder_label(&esiti[1].folder),
+            "Nella cartella «copia di R-2026-000005»."
+        );
+        assert_eq!(super::folder_label(""), "Nella cartella esaminata.");
+        assert_eq!(
+            summary(&[nella("R-1", VerificationStatus::Intact)]),
+            "1 documento verificato: integro, corrisponde al suo elenco delle impronte."
+        );
     }
 
     #[test]

@@ -65,6 +65,7 @@ fn relazione() -> Vec<u8> {
         ],
     };
     let session = NarrativeSession {
+        pauses: Vec::new(),
         label: String::from("Sessione di prova"),
         started_at: Timestamp::from_millis(1_700_000_000_000),
         ended_at: Some(Timestamp::from_millis(1_700_007_200_000)),
@@ -728,6 +729,7 @@ fn relazione_con_stemma() -> Vec<u8> {
         contents: Vec::new(),
     };
     let session = NarrativeSession {
+        pauses: Vec::new(),
         label: String::from("Sessione di prova"),
         started_at: Timestamp::from_millis(1_700_000_000_000),
         ended_at: Some(Timestamp::from_millis(1_700_007_200_000)),
@@ -1048,6 +1050,7 @@ fn writes_the_two_pilot_documents() {
     let operator = Actor::try_new("operatore.prova").expect("attore valido");
     let generated_at = Timestamp::from_millis(1_752_086_400_000);
     let session = NarrativeSession {
+        pauses: Vec::new(),
         label: String::from("Monitoraggio di prova"),
         started_at: Timestamp::from_millis(1_752_000_000_000),
         ended_at: Some(Timestamp::from_millis(1_752_010_800_000)),

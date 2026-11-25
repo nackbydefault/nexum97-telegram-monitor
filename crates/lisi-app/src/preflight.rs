@@ -208,18 +208,34 @@ pub fn run(window: &AppWindow, preflight: &SharedPreflight) {
     mostra(window, &esito);
 }
 
+/// Le frasi tradotte una per una e unite da uno spazio (CU01-010).
+fn per_lo_schermo(frasi: &[String]) -> SharedString {
+    SharedString::from(
+        frasi
+            .iter()
+            .filter(|frase| !frase.is_empty())
+            .map(|frase| crate::lingua::schermo(frase).to_string())
+            .collect::<Vec<_>>()
+            .join(" "),
+    )
+}
+
 /// Mostra la riga.
 fn mostra(window: &AppWindow, esito: &Preflight) {
     window.set_preflight_ready(esito.is_ready());
-    window.set_preflight_line(SharedString::from(esito.line()));
-    window.set_preflight_what_to_do(SharedString::from(esito.what_to_do().unwrap_or_default()));
+    // Una frase per volta al confine con lo schermo: la riga intera non è nel
+    // catalogo, e nell'interfaccia inglese restava italiana (CU01-010).
+    window.set_preflight_line(per_lo_schermo(&esito.line_sentences()));
+    window.set_preflight_what_to_do(crate::lingua::schermo(
+        esito.what_to_do().unwrap_or_default(),
+    ));
 
     let luogo = match &esito.outcome {
         lisi_services::preflight::PreflightOutcome::NotYet { fix, .. } => Some(fix.place),
         lisi_services::preflight::PreflightOutcome::Ready { .. } => None,
     };
     window.set_preflight_go_page(luogo.and_then(page_of).unwrap_or(-1));
-    window.set_preflight_go_label(SharedString::from(luogo.map_or("", go_label)));
+    window.set_preflight_go_label(crate::lingua::schermo(luogo.map_or("", go_label)));
     let controllo = match &esito.outcome {
         lisi_services::preflight::PreflightOutcome::NotYet { check, .. } => Some(*check),
         lisi_services::preflight::PreflightOutcome::Ready { .. } => None,
@@ -276,6 +292,52 @@ mod tests {
     use lisi_services::preflight::PreflightPlace;
 
     use super::{go_label, page_of};
+
+    /// **Nell'interfaccia inglese la riga «Pronto per lavorare…» è tutta
+    /// tradotta**: ogni sua frase ha la voce nel catalogo, in ogni stato
+    /// dell'ora di Windows e anche in Esercitazione (COLLAUDO-FIX-01, CU01-010).
+    ///
+    /// Vista rossa con la riga intera, com'era nella 0.2.2: la frase composta
+    /// non è nel catalogo, e restava italiana.
+    #[test]
+    fn la_riga_di_prontezza_si_traduce_frase_per_frase() {
+        use lisi_core::model::language::InterfaceLanguage;
+        use lisi_core::role::OperatingMode;
+        use lisi_platform::time_sync::TimeSyncState;
+        use lisi_services::preflight::{Preflight, PreflightOutcome};
+
+        let ore = [
+            TimeSyncState::FromServer,
+            TimeSyncState::FromDomain,
+            TimeSyncState::FromBoth,
+            TimeSyncState::NotSynchronized,
+            TimeSyncState::ServiceDisabled,
+            TimeSyncState::Undeterminable,
+        ];
+        let mut lette = 0;
+        for time_sync in ore {
+            for exercise in [false, true] {
+                let esito = Preflight {
+                    outcome: PreflightOutcome::Ready {
+                        not_verified: Vec::new(),
+                    },
+                    mode: OperatingMode::Administrator,
+                    exercise,
+                    time_sync,
+                };
+                assert_eq!(esito.line_sentences().join(" "), esito.line());
+                for frase in esito.line_sentences() {
+                    lette += 1;
+                    assert_ne!(
+                        crate::lingua::tr_in(InterfaceLanguage::English, &frase),
+                        frase,
+                        "senza traduzione inglese: «{frase}»"
+                    );
+                }
+            }
+        }
+        assert!(lette >= 30, "frasi lette: {lette}");
+    }
 
     const UI: &str = include_str!("../ui/app-window.slint");
     const THIS_MODULE: &str = include_str!("preflight.rs");

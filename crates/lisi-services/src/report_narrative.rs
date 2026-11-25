@@ -248,6 +248,9 @@ pub struct NarrativeSession {
     /// per i documenti (PERSON-MEDIA-01 parte 3, ADR-0174). Vuoto per difetto:
     /// nessuna entra se nessuno la sceglie.
     pub profile_observations: Vec<NarrativeProfileObservation>,
+    /// Le pause dell'acquisizione, già in parole: quando, chi e perché
+    /// (COLLAUDO-FIX-01, CU01-015). Vuoto se non ce ne sono state.
+    pub pauses: Vec<String>,
 }
 
 /// Un'osservazione di profilo scelta per i documenti, già in parole.
@@ -540,11 +543,22 @@ fn letterhead(input: &NarrativeInput<'_>) -> Letterhead {
 }
 
 /// Le righe del piede, accanto alla numerazione delle pagine.
+///
+/// **Facoltativa, come dice la procedura**: senza un valore il piede porta la
+/// sola numerazione. Fino alla 0.2.2 stampava il segnaposto
+/// «[Riferimenti dell'ufficio]» anche in un documento finito
+/// (COLLAUDO-FIX-01, CU01-008). L'intestazione resta com'è: le sue righe
+/// identificano l'ufficio, e uno spazio da compilare vi dice dove va scritto.
 fn footer(input: &NarrativeInput<'_>) -> Vec<LetterheadLine> {
-    vec![line(
-        input.profile.footer_line.as_ref().map(|f| f.as_str()),
-        "Riferimenti dell'ufficio",
-    )]
+    optional_footer(input.profile.footer_line.as_ref().map(|f| f.as_str()))
+}
+
+/// Il piede facoltativo: la riga configurata, o nessuna (CU01-008).
+pub(crate) fn optional_footer(configured: Option<&str>) -> Vec<LetterheadLine> {
+    configured
+        .map(|value| LetterheadLine::Configured(value.to_owned()))
+        .into_iter()
+        .collect()
 }
 
 /// Una riga configurata, oppure lo spazio da compilare che la sostituisce.
@@ -712,12 +726,9 @@ fn activity(input: &NarrativeInput<'_>, blocks: &mut Vec<Block>) {
     }
 
     monitored_sources(input, blocks);
-    push_coverage(blocks, input.coverage);
+    push_coverage(blocks, input.coverage, &input.session.pauses);
 
-    blocks.push(Block::Paragraph(format!(
-        "Nel periodo indicato sono stati acquisiti e analizzati {} contenuti. \
-         Di questi, {} sono stati selezionati dall'operatore per essere \
-         rappresentati nella presente relazione e {} non sono rappresentati.",
+    blocks.push(Block::Paragraph(acquired_and_selected(
         input.snapshot.monitored_count(),
         input.snapshot.selected_count(),
         input.snapshot.excluded_count(),
@@ -732,6 +743,47 @@ fn activity(input: &NarrativeInput<'_>, blocks: &mut Vec<Block>) {
     technical_faults(input, blocks);
 }
 
+/// Quanti contenuti sono stati acquisiti, quanti scelti e quanti no, con il
+/// verbo e il participio concordati con il numero (COLLAUDO-FIX-01, CU01-007).
+///
+/// Fino alla 0.2.2 la frase era una sola, al plurale: «sono stati acquisiti e
+/// analizzati 1 contenuti. Di questi, 1 sono stati selezionati».
+fn acquired_and_selected(monitored: usize, selected: usize, excluded: usize) -> String {
+    if monitored == 1 {
+        return if selected == 1 {
+            String::from(
+                "Nel periodo indicato è stato acquisito e analizzato 1 contenuto, selezionato \
+                 dall'operatore per essere rappresentato nella presente relazione.",
+            )
+        } else {
+            String::from(
+                "Nel periodo indicato è stato acquisito e analizzato 1 contenuto, che \
+                 l'operatore non ha selezionato: non è rappresentato nella presente relazione.",
+            )
+        };
+    }
+    let scelti = if selected == 1 {
+        String::from(
+            "1 è stato selezionato dall'operatore per essere rappresentato nella presente \
+             relazione",
+        )
+    } else {
+        format!(
+            "{selected} sono stati selezionati dall'operatore per essere rappresentati nella \
+             presente relazione"
+        )
+    };
+    let esclusi = if excluded == 1 {
+        String::from("1 non è rappresentato")
+    } else {
+        format!("{excluded} non sono rappresentati")
+    };
+    format!(
+        "Nel periodo indicato sono stati acquisiti e analizzati {monitored} contenuti. Di \
+         questi, {scelti} e {esclusi}."
+    )
+}
+
 /// Che cosa la postazione ha guardato, fonte per fonte (PR-05, ADR-0121).
 ///
 /// # Una dichiarazione di limite
@@ -742,7 +794,59 @@ fn activity(input: &NarrativeInput<'_>, blocks: &mut Vec<Block>) {
 ///
 /// Le frasi sono quelle dello schermo (`crate::coverage`): l'atto non deve dire
 /// una cosa diversa dalla schermata.
-pub fn push_coverage(blocks: &mut Vec<Block>, lines: &[crate::coverage::CoverageLine]) {
+///
+/// # Le pause
+///
+/// Una pausa è un buco **deciso**: dopo le fonti, chi l'ha decisa e con quale
+/// motivo (COLLAUDO-FIX-01, CU01-015). Fino alla 0.2.2 l'atto diceva soltanto
+/// «in pausa per decisione dell'operatore».
+pub fn push_coverage(
+    blocks: &mut Vec<Block>,
+    lines: &[crate::coverage::CoverageLine],
+    pauses: &[String],
+) {
+    push_coverage_lines(blocks, lines);
+    for pausa in pauses {
+        blocks.push(Block::Paragraph(pausa.clone()));
+    }
+}
+
+/// Una pausa dell'acquisizione, per i documenti: quando, chi l'ha decisa e
+/// perché (COLLAUDO-FIX-01, CU01-015).
+///
+/// Sta con i documenti, che restano in italiano: lo schermo dice la pausa
+/// con le sue frasi, nella lingua scelta.
+///
+/// La copertura dice il periodo «non coperto»; questa frase dice la decisione
+/// che lo ha aperto, con le parole che l'operatore ha scritto, perché chi
+/// legge l'atto sappia perché la copertura ha un buco voluto. Gli istanti sono
+/// in UTC, come nel resto dei documenti.
+#[must_use]
+pub fn pause_in_words(pausa: &lisi_core::model::acquisition_pause::AcquisitionPause) -> String {
+    let decisa = format!(
+        "dal {}, decisa da {}, con questo motivo: «{}»",
+        pausa.paused_at.to_readable_utc(),
+        pausa.paused_by.as_str(),
+        pausa.reason.as_str()
+    );
+    match (pausa.resumed_at, pausa.resumed_by.as_ref()) {
+        (Some(ripresa), Some(chi)) => format!(
+            "Acquisizione in pausa {decisa}; ripresa il {} da {}.",
+            ripresa.to_readable_utc(),
+            chi.as_str()
+        ),
+        (Some(ripresa), None) => format!(
+            "Acquisizione in pausa {decisa}; ripresa il {}.",
+            ripresa.to_readable_utc()
+        ),
+        (None, _) => {
+            format!("Acquisizione in pausa {decisa}; ancora in pausa alla data del documento.")
+        }
+    }
+}
+
+/// Le righe della copertura, fonte per fonte.
+fn push_coverage_lines(blocks: &mut Vec<Block>, lines: &[crate::coverage::CoverageLine]) {
     blocks.push(Block::Lead {
         lead: String::from("Che cosa questa postazione ha guardato:"),
         body: String::from(lisi_core::model::coverage::COVERAGE_MEANING),
@@ -798,8 +902,13 @@ fn monitored_sources(input: &NarrativeInput<'_>, blocks: &mut Vec<Block>) {
         .iter()
         .map(|source| {
             format!(
-                "«{}» ({} contenuti acquisiti)",
-                source.label, source.acquired
+                "«{}» ({})",
+                source.label,
+                lisi_core::text::counted(
+                    source.acquired,
+                    "contenuto acquisito",
+                    "contenuti acquisiti"
+                )
             )
         })
         .collect::<Vec<_>>()
@@ -1093,11 +1202,18 @@ pub fn push_contexts(blocks: &mut Vec<Block>, contexts: &[LedgerContext], beyond
         }
 
         if context.lines_beyond > 0 {
-            blocks.push(Block::Paragraph(format!(
-                "Il contorno conservato comprende altre {} righe, non riprodotte nel \
-                 presente documento per ragioni di estensione.",
-                context.lines_beyond
-            )));
+            blocks.push(Block::Paragraph(if context.lines_beyond == 1 {
+                String::from(
+                    "Il contorno conservato comprende un'altra riga, non riprodotta nel \
+                     presente documento per ragioni di estensione.",
+                )
+            } else {
+                format!(
+                    "Il contorno conservato comprende altre {} righe, non riprodotte nel \
+                     presente documento per ragioni di estensione.",
+                    context.lines_beyond
+                )
+            }));
         }
     }
 
@@ -1129,13 +1245,22 @@ fn conclusions(input: &NarrativeInput<'_>, outcome: ReportOutcome, blocks: &mut 
             "L'attività descritta si è svolta nei termini sopra riportati. {}",
             outcome.declaration()
         ),
-        ReportOutcome::WithFindings => format!(
-            "L'attività descritta si è svolta nei termini sopra riportati. Nella \
-             presente relazione sono rappresentati {} elementi, selezionati \
-             dall'operatore fra i {} acquisiti nel corso dell'attività.",
-            input.snapshot.selected_count(),
-            input.snapshot.monitored_count(),
-        ),
+        ReportOutcome::WithFindings => {
+            // Concordati con il numero (CU01-007): «sono rappresentati 1
+            // elementi, selezionati … fra i 1 acquisiti» nella 0.2.2.
+            let rappresentati = match input.snapshot.selected_count() {
+                1 => String::from("è rappresentato 1 elemento, selezionato"),
+                quanti => format!("sono rappresentati {quanti} elementi, selezionati"),
+            };
+            let fra = match input.snapshot.monitored_count() {
+                1 => String::from("l'unico contenuto acquisito"),
+                quanti => format!("i {quanti} acquisiti"),
+            };
+            format!(
+                "L'attività descritta si è svolta nei termini sopra riportati. Nella presente \
+                 relazione {rappresentati} dall'operatore fra {fra} nel corso dell'attività."
+            )
+        }
     };
     blocks.push(Block::Paragraph(closing));
 }
@@ -1247,6 +1372,7 @@ mod tests {
 
     fn session() -> NarrativeSession {
         NarrativeSession {
+            pauses: Vec::new(),
             label: String::from("Sessione di prova"),
             started_at: timestamp(1_700_000_000_000),
             ended_at: Some(timestamp(1_700_007_200_000)),
@@ -1637,7 +1763,129 @@ mod tests {
 
         assert!(text.contains("In data 2023-11-14 22:13:20 UTC veniva avviata"));
         assert!(text.contains("In data 2023-11-15 00:13:20 UTC l'attività veniva conclusa"));
-        assert!(text.contains("«Canale di prova» (1 contenuti acquisiti)"));
+        // Concordato con il numero (COLLAUDO-FIX-01, CU01-007): fino alla 0.2.2
+        // questa prova chiedeva «(1 contenuti acquisiti)», l'errore stesso.
+        assert!(text.contains("«Canale di prova» (1 contenuto acquisito)"));
+    }
+
+    /// **Con un contenuto solo, verbo, participio e nome sono al singolare**,
+    /// in apertura e in chiusura (COLLAUDO-FIX-01, CU01-007). Vista rossa con
+    /// la 0.2.2: «sono stati acquisiti e analizzati 1 contenuti. Di questi, 1
+    /// sono stati selezionati», «sono rappresentati 1 elementi … fra i 1
+    /// acquisiti».
+    #[test]
+    fn un_contenuto_solo_si_dice_al_singolare() {
+        let scelto = compose_with(
+            &ReportTemplateProfile::default(),
+            &snapshot(&[1], &[1]),
+            &[finding(1)],
+        )
+        .text();
+        assert!(
+            scelto.contains(
+                "Nel periodo indicato è stato acquisito e analizzato 1 contenuto, selezionato \
+                 dall'operatore per essere rappresentato nella presente relazione."
+            ),
+            "{scelto}"
+        );
+        assert!(
+            scelto.contains(
+                "Nella presente relazione è rappresentato 1 elemento, selezionato \
+                 dall'operatore fra l'unico contenuto acquisito nel corso dell'attività."
+            ),
+            "{scelto}"
+        );
+        assert!(!scelto.contains(" 1 contenuti"), "{scelto}");
+        assert!(!scelto.contains(" 1 elementi"), "{scelto}");
+        assert!(!scelto.contains("fra i 1 "), "{scelto}");
+
+        let non_scelto =
+            compose_with(&ReportTemplateProfile::default(), &snapshot(&[], &[1]), &[]).text();
+        assert!(
+            non_scelto.contains(
+                "è stato acquisito e analizzato 1 contenuto, che l'operatore non ha \
+                 selezionato: non è rappresentato nella presente relazione."
+            ),
+            "{non_scelto}"
+        );
+
+        // Con più contenuti e uno scelto, ciascuna parte concorda con il suo.
+        assert_eq!(
+            super::acquired_and_selected(3, 1, 2),
+            "Nel periodo indicato sono stati acquisiti e analizzati 3 contenuti. Di questi, 1 è \
+             stato selezionato dall'operatore per essere rappresentato nella presente relazione \
+             e 2 non sono rappresentati."
+        );
+        assert_eq!(
+            super::acquired_and_selected(3, 2, 1),
+            "Nel periodo indicato sono stati acquisiti e analizzati 3 contenuti. Di questi, 2 \
+             sono stati selezionati dall'operatore per essere rappresentati nella presente \
+             relazione e 1 non è rappresentato."
+        );
+    }
+
+    /// **La pausa arriva nei documenti con chi l'ha decisa e il motivo**, dopo
+    /// la copertura delle fonti (COLLAUDO-FIX-01, CU01-015). Vista rossa con la
+    /// 0.2.2: la relazione diceva soltanto «in pausa per decisione
+    /// dell'operatore».
+    #[test]
+    fn la_pausa_arriva_nei_documenti_con_chi_e_perche() {
+        use lisi_core::model::acquisition_pause::AcquisitionPause;
+
+        let (Ok(chi), Ok(motivo), Ok(ripresa_da)) = (
+            lisi_core::text::Actor::try_new("operatore.prova"),
+            lisi_core::model::reason::OperationalReason::try_new(
+                "riunione d'ufficio sulla fonte di prova",
+            ),
+            lisi_core::text::Actor::try_new("operatore.due"),
+        ) else {
+            panic!("i valori di prova devono essere validi");
+        };
+        let pausa = AcquisitionPause {
+            session_id: lisi_core::SessionId::new(1),
+            paused_at: timestamp(1_700_003_600_000),
+            paused_by: chi,
+            reason: motivo,
+            resumed_at: Some(timestamp(1_700_005_400_000)),
+            resumed_by: Some(ripresa_da),
+        };
+        let frase = super::pause_in_words(&pausa);
+        assert_eq!(
+            frase,
+            "Acquisizione in pausa dal 2023-11-14 23:13:20 UTC, decisa da operatore.prova, con \
+             questo motivo: «riunione d'ufficio sulla fonte di prova»; ripresa il 2023-11-14 \
+             23:43:20 UTC da operatore.due."
+        );
+        let aperta = AcquisitionPause {
+            resumed_at: None,
+            resumed_by: None,
+            ..pausa
+        };
+        assert!(
+            super::pause_in_words(&aperta).ends_with("ancora in pausa alla data del documento."),
+            "{}",
+            super::pause_in_words(&aperta)
+        );
+
+        let mut sessione = session();
+        sessione.pauses = vec![frase.clone()];
+        let identifier = report_id();
+        let actor = operator();
+        let testo = compose(&NarrativeInput {
+            report_id: &identifier,
+            profile: &ReportTemplateProfile::default(),
+            snapshot: &snapshot(&[], &[1]),
+            operator: &actor,
+            generated_at: timestamp(1_700_010_000_000),
+            session: &sessione,
+            sources: &[],
+            findings: &[],
+            coverage: &[],
+            faults: &[],
+            configuration: &crate::analysis_configuration::AnalysisConfiguration::unknown(),
+        })
+        .text();
+        assert!(testo.contains(&frase), "{testo}");
     }
 
     /// **La valutazione dell'ufficio sulla fonte compare accanto alla fonte,
@@ -1936,6 +2184,7 @@ mod tests {
     #[test]
     fn an_unfinished_session_has_no_invented_duration() {
         let unfinished = NarrativeSession {
+            pauses: Vec::new(),
             label: String::from("Sessione aperta"),
             started_at: timestamp(1_700_000_000_000),
             ended_at: None,
@@ -1971,12 +2220,10 @@ mod tests {
                 .all(LetterheadLine::is_placeholder)
         );
         assert!(report.letterhead.emblem.is_none());
-        assert_eq!(
-            report.footer,
-            vec![LetterheadLine::Placeholder(String::from(
-                "Riferimenti dell'ufficio"
-            ))]
-        );
+        // Il piede è facoltativo: senza un valore porta la sola numerazione,
+        // non un segnaposto (COLLAUDO-FIX-01, CU01-008; fino alla 0.2.2 qui si
+        // chiedeva «[Riferimenti dell'ufficio]», che finiva stampato).
+        assert!(report.footer.is_empty(), "{:?}", report.footer);
     }
 
     #[test]
@@ -2115,7 +2362,9 @@ mod tests {
             !conclusione.contains("di seguito"),
             "la conclusione punta a un seguito che non c'e': {conclusione}"
         );
-        assert!(conclusione.contains("sono rappresentati 1 elementi"));
+        // Concordato con il numero (COLLAUDO-FIX-01, CU01-007): fino alla 0.2.2
+        // questa prova chiedeva «sono rappresentati 1 elementi», l'errore stesso.
+        assert!(conclusione.contains("è rappresentato 1 elemento, selezionato"));
         assert!(conclusione.contains("fra i 3 acquisiti"));
     }
 
@@ -2246,7 +2495,7 @@ mod tests {
         };
 
         let mut vuoto = Vec::new();
-        push_coverage(&mut vuoto, &[]);
+        push_coverage(&mut vuoto, &[], &[]);
         let testo: String = vuoto.iter().map(Block::text).collect::<Vec<_>>().join("\n");
         assert!(testo.contains(COVERAGE_MEANING), "{testo}");
         assert!(testo.contains("non è stata calcolata"), "{testo}");
@@ -2263,6 +2512,7 @@ mod tests {
                 source: String::from("Canale di prova"),
                 coverage: copertura,
             }],
+            &[],
         );
         let testo: String = blocchi
             .iter()

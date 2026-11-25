@@ -153,6 +153,9 @@ pub struct LedgerSession {
     pub ended_at: Option<Timestamp>,
     /// Stato dichiarato dalla sessione.
     pub state: String,
+    /// Le pause dell'acquisizione, già in parole: quando, chi e perché
+    /// (COLLAUDO-FIX-01, CU01-015). Vuoto se non ce ne sono state.
+    pub pauses: Vec<String>,
 }
 
 /// Quante righe di cronologia un documento riproduce per grappolo.
@@ -1173,7 +1176,7 @@ fn session_sheet(input: &LedgerInput<'_>) -> Sheet {
         .filter(|entry| entry.selected)
         .count();
 
-    Sheet {
+    let mut sheet = Sheet {
         name: String::from("01 — Sessione"),
         headers: vec![String::from("Voce"), String::from("Valore")],
         rows: vec![
@@ -1219,7 +1222,16 @@ fn session_sheet(input: &LedgerInput<'_>) -> Sheet {
                 Cell::optional(input.profile.office.as_ref().map(|f| f.as_str())),
             ),
         ],
-    }
+    };
+    // Una riga per pausa, con chi l'ha decisa e perché (CU01-015).
+    sheet.rows.extend(
+        input
+            .session
+            .pauses
+            .iter()
+            .map(|pausa| row("Pausa dell'acquisizione", Cell::text(pausa))),
+    );
+    sheet
 }
 
 /// `02 — Fonti` — da dove i contenuti sono arrivati.
@@ -1686,6 +1698,7 @@ mod tests {
 
     fn session() -> LedgerSession {
         LedgerSession {
+            pauses: Vec::new(),
             label: String::from("Monitoraggio di prova"),
             started_at: Timestamp::from_millis(1_752_000_000_000),
             ended_at: None,

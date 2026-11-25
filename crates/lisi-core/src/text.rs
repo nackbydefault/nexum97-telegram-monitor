@@ -396,6 +396,24 @@ pub fn counted(numero: usize, singolare: &str, plurale: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    /// **Con 1 il singolare, con ogni altro numero il plurale, zero compreso**
+    /// (CU01-007).
+    #[test]
+    fn un_numero_concorda_con_il_suo_nome() {
+        use super::counted;
+
+        assert_eq!(
+            counted(1, "contenuto acquisito", "contenuti acquisiti"),
+            "1 contenuto acquisito"
+        );
+        assert_eq!(
+            counted(2, "contenuto acquisito", "contenuti acquisiti"),
+            "2 contenuti acquisiti"
+        );
+        assert_eq!(counted(0, "riga", "righe"), "0 righe");
+        assert_eq!(counted(11, "riga", "righe"), "11 righe");
+    }
+
     use super::{Actor, ContentBody, ContentUrl, DisplayName, Note, counted};
     use crate::error::DomainError;
 

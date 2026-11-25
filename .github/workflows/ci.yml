@@ -1,0 +1,83 @@
+# Compilazione e prove su Windows, senza materiali privati e senza credenziali.
+#
+# Gira su ogni richiesta di modifica verso `main`, su `main` e a mano. Nella
+# repository pubblica i runner standard di GitHub non hanno costo. Il token è di
+# sola lettura, le azioni sono fissate per impronta di commit, e TDLib non
+# serve: il programma la carica soltanto a runtime, con la funzione
+# `tdlib-runtime`, e le prove usano il connettore di prova.
+name: CI Windows
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: "0"
+  RUST_BACKTRACE: "1"
+
+jobs:
+  windows:
+    name: Formato, Clippy, prove e build
+    runs-on: windows-latest
+    timeout-minutes: 150
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Rust dalla versione fissata in rust-toolchain.toml
+        shell: pwsh
+        run: |
+          $toolchain = (Select-String -Path rust-toolchain.toml -Pattern '^channel\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          rustup toolchain install $toolchain --profile minimal --component rustfmt clippy
+          rustup default $toolchain
+          rustc --version --verbose
+
+      - name: Conserva di cargo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - name: Formato
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+      - name: Prove (tutte le funzioni)
+        run: cargo test --workspace --all-features --locked
+
+      # Su main e a mano: la seconda serie di prove e la build di rilascio, che
+      # sulle richieste di modifica allungherebbero l'attesa senza dire di piu'.
+      - name: Prove (funzioni predefinite)
+        if: github.event_name != 'pull_request'
+        run: cargo test --workspace --locked
+
+      # La build di rilascio vuole i caratteri: lo script li scarica e ne
+      # verifica l'impronta dichiarata in fonts.lock.json.
+      - name: Caratteri, verificati per impronta
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: ./scripts/fetch-fonts.ps1
+
+      - name: Build di rilascio
+        if: github.event_name != 'pull_request'
+        run: cargo build --workspace --release --locked

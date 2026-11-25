@@ -957,6 +957,7 @@ pub fn publish_fields(window: &AppWindow, screen: &SharedReport) {
 
     window.set_report_organisation(SharedString::from(fields.organisation.as_str()));
     window.set_report_office(SharedString::from(fields.office.as_str()));
+    window.set_report_premises(SharedString::from(fields.premises.as_str()));
     window.set_report_recipient(SharedString::from(fields.recipient.as_str()));
     window.set_report_recipient_cc(SharedString::from(fields.recipient_cc.as_str()));
     window.set_report_subject(SharedString::from(fields.subject.as_str()));
@@ -1067,12 +1068,11 @@ pub fn refresh(window: &AppWindow, screen: &SharedReport, message: Option<&str>)
                     .map(|value| i32::try_from(*value).unwrap_or(i32::MAX))
                     .collect();
                 window.set_report_levels(ModelRc::from(Rc::new(VecModel::from(levels))));
-                window.set_report_visible_note(crate::lingua::schermo(format!(
-                    "{shown} righe mostrate su {} monitorate. Il filtro non tocca la \
-                     selezione: {} elementi restano scelti.",
+                window.set_report_visible_note(nota_dei_visibili(
+                    shown,
                     summary.total,
-                    flow.selected_count()
-                )));
+                    flow.selected_count(),
+                ));
             }
             Err(error) => {
                 tracing::warn!(kind = error.kind(), "conteggi del report non leggibili");
@@ -2020,10 +2020,11 @@ pub fn wire(window: &AppWindow, screen: &SharedReport) {
                 // letto e validato quando l'operatore lo ha scelto.
                 let emblem = screen.flow.fields.emblem.clone();
                 let emblem_label = screen.flow.fields.emblem_label.clone();
-                // Sede e recapiti non compaiono fra i campi della relazione:
-                // appartengono all'intestazione dell'ufficio e vengono dal
-                // profilo conservato, non da questo passo.
-                let premises = screen.flow.fields.premises.clone();
+                // Sede e recapiti sono la terza riga dell'intestazione: il
+                // documento la stampa, e fino alla 0.2.2 veniva dal profilo
+                // senza comparire fra questi campi (CU01-008). Ora si vede e si
+                // cambia qui, come le altre due.
+                let premises = window.get_report_premises().to_string();
                 screen.flow.fields = ReportFields {
                     organisation: window.get_report_organisation().to_string(),
                     office: window.get_report_office().to_string(),
@@ -2279,6 +2280,39 @@ fn ask_links(screen: &SharedReport) -> String {
     }
 }
 
+/// Quante righe il filtro mostra, su quante, e quante restano scelte, con il
+/// numero concordato (COLLAUDO-FIX-01, CU01-007).
+///
+/// Fino alla 0.2.2 la frase era una sola, al plurale: «1 righe mostrate su 1
+/// monitorate», «1 elementi restano scelti». Ogni forma è una frase intera,
+/// con la sua voce nel catalogo: un nome passato come valore resterebbe
+/// italiano nell'interfaccia inglese. Le due frasi passano il confine una per
+/// volta, perché il catalogo le conosce una per volta.
+fn nota_dei_visibili(shown: usize, total: usize, selected: usize) -> SharedString {
+    let (mostrate, scelte) = frasi_dei_visibili(shown, total, selected);
+    SharedString::from(format!(
+        "{} {}",
+        crate::lingua::schermo(mostrate),
+        crate::lingua::schermo(scelte)
+    ))
+}
+
+/// Le due frasi della nota, in italiano, prima del confine con lo schermo.
+fn frasi_dei_visibili(shown: usize, total: usize, selected: usize) -> (String, String) {
+    let mostrate = match (shown, total) {
+        (1, 1) => String::from("1 riga mostrata su 1 monitorata."),
+        (1, _) => format!("1 riga mostrata su {total} monitorate."),
+        (_, 1) => format!("{shown} righe mostrate su 1 monitorata."),
+        _ => format!("{shown} righe mostrate su {total} monitorate."),
+    };
+    let scelte = if selected == 1 {
+        String::from("Il filtro non tocca la selezione: 1 elemento resta scelto.")
+    } else {
+        format!("Il filtro non tocca la selezione: {selected} elementi restano scelti.")
+    };
+    (mostrate, scelte)
+}
+
 /// Questo stesso file, letto a tempo di compilazione.
 ///
 /// Serve alla guardia strutturale sulla chiamata al generatore: che il pulsante
@@ -2292,6 +2326,57 @@ const THIS_MODULE: &str = include_str!("report.rs");
 mod tests {
     use lisi_core::model::report::ReportOutcome;
     use lisi_core::{ContentId, SessionId};
+
+    /// **La terza riga dell'intestazione si vede e si cambia nella procedura del
+    /// Report**, come le altre due (COLLAUDO-FIX-01, CU01-008). Vista rossa con
+    /// la 0.2.2: la sede veniva dal profilo e non c'era fra i campi.
+    #[test]
+    fn la_sede_si_cambia_nella_procedura() {
+        let interfaccia = include_str!("../ui/app-window.slint");
+        assert!(interfaccia.contains(concat!("value <=> root.report-", "premises;")));
+        let modulo = super::THIS_MODULE;
+        assert!(modulo.contains(concat!(
+            "let premises = window.get_report_",
+            "premises().to_string();"
+        )));
+        assert!(modulo.contains(concat!(
+            "window.set_report_",
+            "premises(SharedString::from(fields.premises.as_str()));"
+        )));
+    }
+
+    /// **Con 1 il singolare: «1 riga mostrata su 1 monitorata», «1 elemento
+    /// resta scelto»** (COLLAUDO-FIX-01, CU01-007). Vista rossa con la frase
+    /// della 0.2.2, sempre al plurale.
+    #[test]
+    fn la_nota_dei_visibili_concorda_con_il_numero() {
+        use super::frasi_dei_visibili;
+
+        let frasi = |a, b, c| {
+            let (prima, seconda) = frasi_dei_visibili(a, b, c);
+            format!("{prima} {seconda}")
+        };
+        assert_eq!(
+            frasi(1, 1, 1),
+            "1 riga mostrata su 1 monitorata. Il filtro non tocca la selezione: 1 elemento \
+             resta scelto."
+        );
+        assert_eq!(
+            frasi(1, 7, 0),
+            "1 riga mostrata su 7 monitorate. Il filtro non tocca la selezione: 0 elementi \
+             restano scelti."
+        );
+        assert_eq!(
+            frasi(0, 1, 1),
+            "0 righe mostrate su 1 monitorata. Il filtro non tocca la selezione: 1 elemento \
+             resta scelto."
+        );
+        assert_eq!(
+            frasi(3, 12, 2),
+            "3 righe mostrate su 12 monitorate. Il filtro non tocca la selezione: 2 elementi \
+             restano scelti."
+        );
+    }
 
     use super::{
         FIRST_STEP, GENERATION_STEP, LAST_STEP, ReportFields, ReportFlow, outcome_sentence,

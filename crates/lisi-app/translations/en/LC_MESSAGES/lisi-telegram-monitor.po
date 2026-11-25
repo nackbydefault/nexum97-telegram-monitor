@@ -4555,8 +4555,8 @@ msgstr "No account selected"
 msgid "Accesso non disponibile"
 msgstr "Sign-in not available"
 
-msgid "Selezionare un account, o crearne uno su un profilo, per avviare l'accesso."
-msgstr "Select an account, or create one on a profile, to start sign-in."
+msgid "Selezionare un account, o aggiungerne uno con «Aggiungi un altro account…», per avviare l'accesso."
+msgstr "Select an account, or add one with «Add another account…», to start sign-in."
 
 msgid "Account selezionato."
 msgstr "Account selected."
@@ -5950,8 +5950,23 @@ msgstr "without selected findings: it will describe the activity carried out and
 msgid "con risultanze selezionate: rappresenterà i soli elementi scelti"
 msgstr "with selected findings: it will represent only the chosen items"
 
-msgid "{shown} righe mostrate su {} monitorate. Il filtro non tocca la selezione: {} elementi restano scelti."
-msgstr "{shown} rows shown out of {} monitored. The filter does not touch the selection: {} items stay chosen."
+msgid "1 riga mostrata su 1 monitorata."
+msgstr "1 row shown out of 1 monitored."
+
+msgid "1 riga mostrata su {total} monitorate."
+msgstr "1 row shown out of {total} monitored."
+
+msgid "{shown} righe mostrate su 1 monitorata."
+msgstr "{shown} rows shown out of 1 monitored."
+
+msgid "{shown} righe mostrate su {total} monitorate."
+msgstr "{shown} rows shown out of {total} monitored."
+
+msgid "Il filtro non tocca la selezione: 1 elemento resta scelto."
+msgstr "The filter does not touch the selection: 1 item stays chosen."
+
+msgid "Il filtro non tocca la selezione: {selected} elementi restano scelti."
+msgstr "The filter does not touch the selection: {selected} items stay chosen."
 
 msgid "Questi campi compongono l'intestazione e i riferimenti della relazione. Sono facoltativi: dove un dato manca, il documento lo dichiara invece di inventarlo. Valgono per questa relazione e non vengono conservati come profilo dell'ufficio."
 msgstr "These fields make up the header and the references of the report. They are optional: where an item is missing, the document states it instead of inventing it. They apply to this report and are not kept as the office profile."
@@ -6780,12 +6795,6 @@ msgstr "List of fingerprints unreadable"
 
 msgid "Nessun rapporto esportato da verificare."
 msgstr "No exported report to verify."
-
-msgid "Verificati {}: tutti integri, corrispondono al loro elenco delle impronte."
-msgstr "Verified {}: all intact, they match their list of fingerprints."
-
-msgid "ATTENZIONE: su {}, {doubtful} non {} al loro elenco delle impronte."
-msgstr "WARNING: out of {}, {doubtful} do not {} their list of fingerprints."
 
 msgid "Scegliere la cartella da verificare"
 msgstr "Choose the folder to verify"
@@ -12715,14 +12724,12 @@ msgstr "Ready for the exercise: neither Telegram nor an account is needed."
 msgid "Pronto per lavorare."
 msgstr "Ready to work."
 
-msgid " Non verificati: {}."
-msgstr " Not checked: {}."
+msgid "Non verificati: {}."
+msgstr "Not checked: {}."
 
-msgid " Controllo rapido: la verifica completa dell'archivio è facoltativa, da Impostazioni."
-msgstr " Quick check: the full archive check is optional, from Settings."
+msgid "Controllo rapido: la verifica completa dell'archivio è facoltativa, da Impostazioni."
+msgstr "Quick check: the full archive check is optional, from Settings."
 
-msgid "{riga} {}"
-msgstr "{riga} {}"
 
 msgid " Serve la modalità amministratore: chiederlo a chi amministra la postazione."
 msgstr " Administrator mode is needed: ask whoever administers the workstation."
@@ -13120,11 +13127,7 @@ msgstr "Each monitoring is a distinct decision, with its responsible person, its
 msgid "Rapporto complessivo {} scritto in «{}», in PDF e in testo, con l'elenco delle impronte."
 msgstr "Overall report {} written to «{}», in PDF and in text, with the list of fingerprints."
 
-msgid "Riferimenti dell'ufficio"
-msgstr "Office references"
 
-msgid "Rapporto complessivo {reference} su {} monitoraggi."
-msgstr "Overall report {reference} on {} monitorings."
 
 msgid "Responsabile del documento:"
 msgstr "Person responsible for the document:"
@@ -15366,3 +15369,63 @@ msgstr "Abuse contact"
 
 msgid "Nomi di rete che lo servono"
 msgstr "Network names that serve it"
+
+msgid "Scrivere prima perché la pausa, in almeno 20 caratteri."
+msgstr "First write why the pause, in at least 20 characters."
+
+msgid "Il motivo è troppo lungo: al massimo 500 caratteri."
+msgstr "The reason is too long: at most 500 characters."
+
+msgid "Il motivo è corto: manca ancora 1 carattere."
+msgstr "The reason is short: 1 more character is needed."
+
+msgid "Il motivo è corto: mancano ancora {mancano} caratteri."
+msgstr "The reason is short: {mancano} more characters are needed."
+
+msgid "Nella cartella esaminata."
+msgstr "In the folder examined."
+
+msgid "Nella cartella «{folder}»."
+msgstr "In the folder «{folder}»."
+
+msgid "1 documento verificato: integro, corrisponde al suo elenco delle impronte."
+msgstr "1 document verified: intact, it matches its list of fingerprints."
+
+msgid "{documenti} documenti verificati, in una cartella: tutti integri, corrispondono al loro elenco delle impronte."
+msgstr "{documenti} documents verified, in one folder: all intact, they match their list of fingerprints."
+
+msgid "{documenti} documenti verificati, in {cartelle} cartelle: tutti integri, corrispondono al loro elenco delle impronte."
+msgstr "{documenti} documents verified, in {cartelle} folders: all intact, they match their list of fingerprints."
+
+msgid "ATTENZIONE: l'unico documento verificato non corrisponde al suo elenco delle impronte."
+msgstr "WARNING: the only document verified does not match its list of fingerprints."
+
+msgid "ATTENZIONE: su {documenti} documenti, in una cartella, 1 non corrisponde al suo elenco delle impronte."
+msgstr "WARNING: out of {documenti} documents, in one folder, 1 does not match its list of fingerprints."
+
+msgid "ATTENZIONE: su {documenti} documenti, in {cartelle} cartelle, 1 non corrisponde al suo elenco delle impronte."
+msgstr "WARNING: out of {documenti} documents, in {cartelle} folders, 1 does not match its list of fingerprints."
+
+msgid "ATTENZIONE: su {documenti} documenti, in una cartella, {doubtful} non corrispondono al loro elenco delle impronte."
+msgstr "WARNING: out of {documenti} documents, in one folder, {doubtful} do not match their list of fingerprints."
+
+msgid "ATTENZIONE: su {documenti} documenti, in {cartelle} cartelle, {doubtful} non corrispondono al loro elenco delle impronte."
+msgstr "WARNING: out of {documenti} documents, in {cartelle} folders, {doubtful} do not match their list of fingerprints."
+
+msgid "Non ancora: {}."
+msgstr "Not yet: {}."
+
+msgid "contenuto scelto"
+msgstr "content item chosen"
+
+msgid "contenuti scelti"
+msgstr "content items chosen"
+
+msgid "contenuto del raccoglitore che nessuno ha scelto: resta nell'archivio."
+msgstr "content item of the binder that nobody chose: it stays in the archive."
+
+msgid "contenuti del raccoglitore che nessuno ha scelto: restano nell'archivio."
+msgstr "content items of the binder that nobody chose: they stay in the archive."
+
+msgid "Rapporto complessivo {reference} su {}."
+msgstr "Overall report {reference} on {}."

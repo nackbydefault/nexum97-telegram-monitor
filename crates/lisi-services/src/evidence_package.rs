@@ -648,14 +648,14 @@ fn reading_document(
          Prodotto il {quando}, da {chi}, dal workspace «{workspace}».\n\
          Motivo: {motivo}\n\n\
          CHE COSA C'È\n\
-         {n} contenuti scelti da una persona, da {fonti} fonti:\n\
+         {scelti} da una persona, da {fonti}:\n\
          - {contenuti_txt}: ogni contenuto con la sua provenienza e il suo testo;\n\
          - {tabella}: gli stessi contenuti in forma di tabella;\n\
          - {copertura}: quando si guardavano le fonti coinvolte, e quando no;\n\
          - {documenti}: i rapporti che il workspace riferisce, con la loro impronta;\n\
          - {manifest}: l'impronta di ogni file, scritta per ultima.\n\n\
          CHE COSA NON C'È\n\
-         - {fuori} contenuti del workspace che nessuno ha scelto: restano nell'archivio.\n\
+         - {fuori}\n\
          - I file dei rapporti: si riferiscono con la loro impronta, e si consegnano a parte.\n\
          - Le modifiche intermedie e le cancellazioni che il monitoraggio non ha visto.\n\
          - I dati che Telegram non ha dato all'account d'ufficio.\n\n\
@@ -675,14 +675,20 @@ fn reading_document(
         chi = richiesta.operator.as_str(),
         workspace = clean(workspace),
         motivo = clean(richiesta.reason.as_str()),
-        n = anteprima.rows.len(),
-        fonti = anteprima.sources,
+        // Concordati con il numero (COLLAUDO-FIX-01, CU01-007).
+        scelti =
+            lisi_core::text::counted(anteprima.rows.len(), "contenuto scelto", "contenuti scelti"),
+        fonti = lisi_core::text::counted(anteprima.sources, "fonte", "fonti"),
         contenuti_txt = CONTENTS_FILE,
         tabella = TABLE_FILE,
         copertura = COVERAGE_FILE,
         documenti = DOCUMENTS_FILE,
         manifest = MANIFEST_FILE,
-        fuori = anteprima.left_out,
+        fuori = lisi_core::text::counted(
+            anteprima.left_out,
+            "contenuto del raccoglitore che nessuno ha scelto: resta nell'archivio.",
+            "contenuti del raccoglitore che nessuno ha scelto: restano nell'archivio."
+        ),
         negazione = NOT_FORENSIC,
         integrita = INTEGRITY_NOT_SIGNATURE,
         limiti = lisi_core::model::RECOVERY_LIMITS,

@@ -1769,6 +1769,7 @@ monitorabile
 monitoraggi
 monitoraggio
 monitorare
+monitorata
 monitorate
 monitorati
 monitorato

@@ -904,7 +904,19 @@ impl ReportService {
             // «running» nel registro che esce dall'ufficio
             // (FINAL-PRODUCT-REVIEW-01, FPR-02).
             state: session.state.label().to_owned(),
+            pauses: self.pauses_in_words(session_id)?,
         })
+    }
+
+    /// Le pause dell'acquisizione di un monitoraggio, in parole, nell'ordine
+    /// in cui sono state decise (COLLAUDO-FIX-01, CU01-015).
+    fn pauses_in_words(&self, session_id: SessionId) -> ServiceResult<Vec<String>> {
+        Ok(self
+            .database
+            .acquisition_pauses(session_id)?
+            .iter()
+            .map(crate::report_narrative::pause_in_words)
+            .collect())
     }
 
     /// Le fonti monitorate, con quanto ciascuna ha portato.
@@ -1590,6 +1602,7 @@ impl ReportService {
     fn narrative_session(&self, session_id: SessionId) -> ServiceResult<NarrativeSession> {
         let session = self.database.session(session_id)?;
         Ok(NarrativeSession {
+            pauses: self.pauses_in_words(session_id)?,
             label: session.label.as_str().to_owned(),
             // Una sessione mai avviata non ha un inizio proprio: si usa
             // l'istante di creazione, che e' il primo fatto documentabile.
@@ -2732,6 +2745,7 @@ mod tests {
             contents: Vec::new(),
         };
         let session = NarrativeSession {
+            pauses: Vec::new(),
             label: String::from("Sessione di prova"),
             started_at: now(),
             ended_at: Some(later(3_600)),
