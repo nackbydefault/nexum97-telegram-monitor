@@ -223,6 +223,16 @@ impl Preflight {
     /// La riga.
     #[must_use]
     pub fn line(&self) -> String {
+        self.line_sentences().join(" ")
+    }
+
+    /// La riga, frase per frase (COLLAUDO-FIX-01, CU01-010).
+    ///
+    /// Lo schermo traduce una frase per volta: la riga intera, composta da
+    /// pezzi, non è nel catalogo, e nell'interfaccia inglese restava italiana
+    /// («Pronto per lavorare…»). Unite con uno spazio danno `line`.
+    #[must_use]
+    pub fn line_sentences(&self) -> Vec<String> {
         match &self.outcome {
             PreflightOutcome::Ready { not_verified } => {
                 // UNA RIGA CHE NON LASCIA UN DUBBIO (UX-EXCELLENCE-02, SIM3-22).
@@ -233,37 +243,38 @@ impl Preflight {
                 // dichiarazione di ADR-0120 §5 resta — il controllo è rapido, e
                 // la verifica completa non è stata fatta — ma dice anche che è
                 // facoltativa: si può lavorare.
-                let mut riga = if self.exercise {
+                let mut frasi = vec![if self.exercise {
                     String::from("Pronto per l'esercitazione: non servono Telegram né un account.")
                 } else {
                     String::from("Pronto per lavorare.")
-                };
+                }];
                 if !not_verified.is_empty() {
                     let titoli: Vec<&str> = not_verified.iter().map(|c| c.title()).collect();
-                    riga.push_str(&format!(" Non verificati: {}.", titoli.join(", ")));
+                    frasi.push(format!("Non verificati: {}.", titoli.join(", ")));
                 }
-                riga.push(' ');
-                riga.push_str(ora_di_windows(self.time_sync));
-                riga.push_str(
-                    " Controllo rapido: la verifica completa dell'archivio è facoltativa, da \
+                frasi.push(String::from(ora_di_windows(self.time_sync)));
+                frasi.push(String::from(
+                    "Controllo rapido: la verifica completa dell'archivio è facoltativa, da \
                      Impostazioni.",
-                );
-                riga
+                ));
+                frasi
             }
             PreflightOutcome::NotYet {
                 check,
                 what_is_missing,
                 ..
             } => {
-                let riga = format!("Non ancora: {}. {what_is_missing}", check.title());
+                let mut frasi = vec![
+                    format!("Non ancora: {}.", check.title()),
+                    what_is_missing.clone(),
+                ];
                 // L'orologio da correggere: come Windows tiene l'ora è la prima
                 // cosa che serve a chi lo corregge (ADR-0168). Le altre righe
                 // restano sulla cosa che manca.
                 if *check == PreflightCheck::SystemClock {
-                    format!("{riga} {}", ora_di_windows(self.time_sync))
-                } else {
-                    riga
+                    frasi.push(String::from(ora_di_windows(self.time_sync)));
                 }
+                frasi
             }
         }
     }

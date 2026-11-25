@@ -267,14 +267,20 @@ mod tests {
         // - lo sblocco e il blocco, che sono il blocco stesso;
         // - il calcolo della posizione del fumetto del tour, che non è un
         //   comando ma una funzione pura;
+        // - il controllo del motivo della pausa mentre si scrive, se basta e
+        //   quanti caratteri mancano (COLLAUDO-FIX-01, CU01-005): due funzioni
+        //   pure, che non comandano nulla; il comando della pausa porta la
+        //   guardia;
         // - le tre decisioni della scoperta, il cui gestore comune porta la
         //   guardia dentro (`discovery_decision`), e lo si verifica sotto;
         // - i `*_shown`, che rileggono una schermata quando la si apre e non
         //   cambiano nulla.
-        const ECCEZIONI: [&str; 6] = [
+        const ECCEZIONI: [&str; 8] = [
             "unlock_station",
             "lock_station",
             "tour_place",
+            "monitoring_pause_reason_ok",
+            "monitoring_pause_reason_hint",
             "discovery_open_candidate",
             "discovery_add_candidate",
             "discovery_ignore_candidate",

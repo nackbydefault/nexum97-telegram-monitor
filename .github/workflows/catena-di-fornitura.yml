@@ -1,0 +1,50 @@
+# La catena di fornitura: licenze, origini e duplicati delle dipendenze, e gli
+# avvisi di sicurezza della RustSec Advisory Database, con le regole di
+# deny.toml.
+#
+# Due lavori separati, perché dicono due cose diverse. Le licenze devono stare
+# nell'elenco ammesso. Gli avvisi oggi sono ROSSI per RUSTSEC-2026-0543 su
+# `chrono`, una dipendenza dell'interfaccia Slint senza ancora una soluzione a
+# monte: il lavoro resta rosso finché l'avviso c'è, e non si nasconde.
+name: Catena di fornitura
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  licenze:
+    name: Licenze, origini e duplicati
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: cargo deny (licenses, bans, sources)
+        uses: EmbarkStudios/cargo-deny-action@81891abc19297b21343b15ef67dc61e4aea74fda # v2.1.4
+        with:
+          command: check licenses bans sources
+
+  avvisi:
+    name: Avvisi di sicurezza
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: cargo deny (advisories)
+        uses: EmbarkStudios/cargo-deny-action@81891abc19297b21343b15ef67dc61e4aea74fda # v2.1.4
+        with:
+          command: check advisories

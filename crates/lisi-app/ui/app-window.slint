@@ -141,6 +141,8 @@ export struct CapabilityRow {
 
 export struct VerificationRow {
     report: string,
+    // Dove sta il documento, rispetto alla cartella esaminata (CU01-009).
+    folder: string,
     status: string,
     ok: bool,
 }
@@ -2021,7 +2023,7 @@ component ProfileFields inherits VerticalLayout {
             HudButton {
                 label: @tr("Togli lo stemma");
                 enabled: DocumentProfile.emblem-name != "";
-                reason: @tr("Nessuno stemma è stato scelto.");
+                reason: DocumentProfile.emblem-name == "" ? @tr("Nessuno stemma è stato scelto.") : "";
                 clicked => {
                     DocumentProfile.clear-emblem();
                 }
@@ -6358,6 +6360,16 @@ export component AppWindow inherits Window {
     in property <bool> monitoring-can-resume-acquisition: false;
     in property <string> monitoring-pause: "";
     in-out property <string> monitoring-pause-reason: "";
+    // IL MOTIVO SI CONTROLLA MENTRE SI SCRIVE (COLLAUDO-FIX-01, CU01-005 e
+    // UX-07): con la regola del dominio, letta dal Rust e non riscritta qui. Il
+    // pulsante resta spento finché il motivo non basta, e la frase accanto al
+    // campo dice quanti caratteri mancano. Senza gestore la risposta è «no»:
+    // un comando che non si sa controllare non si accende.
+    pure callback monitoring-pause-reason-ok(string) -> bool;
+    pure callback monitoring-pause-reason-hint(string) -> string;
+    // L'esito dell'ultimo comando della pausa, accanto ai comandi: il riquadro
+    // in cima alla schermata, a pagina scorsa, non si vede (CU01-005).
+    in property <string> monitoring-pause-outcome: "";
     callback monitoring-pause-acquisition(string);
     callback monitoring-resume-acquisition();
     in property <string> monitoring-checkpoint: "";
@@ -7660,6 +7672,9 @@ export component AppWindow inherits Window {
     // sorgente: sono i campi del profilo documentale, compilati da chi firma.
     in-out property <string> report-organisation: "";
     in-out property <string> report-office: "";
+    // La terza riga dell'intestazione, che il documento stampa: si vede e si
+    // cambia qui, come le altre due (COLLAUDO-FIX-01, CU01-008).
+    in-out property <string> report-premises: "";
     in-out property <string> report-recipient: "";
     in-out property <string> report-recipient-cc: "";
     in-out property <string> report-subject: "";
@@ -10776,7 +10791,7 @@ export component AppWindow inherits Window {
                                                 && !root.auth-needs-password: HudButton {
                                                 label: @tr("Avvia accesso");
                                                 enabled: root.can-start;
-                                                reason: root.auth-busy ? @tr("Operazione in corso.") : @tr("Selezionare prima un account.");
+                                                reason: root.can-start ? "" : (root.auth-busy ? @tr("Operazione in corso.") : @tr("Selezionare prima un account."));
                                                 clicked => {
                                                     root.start-login();
                                                 }
@@ -10784,7 +10799,7 @@ export component AppWindow inherits Window {
                                             if root.auth-needs-phone: HudButton {
                                                 label: @tr("Invia numero");
                                                 enabled: root.can-submit-phone;
-                                                reason: @tr("Scrivere prima il numero qui sopra.");
+                                                reason: !root.can-submit-phone ? @tr("Scrivere prima il numero qui sopra.") : "";
                                                 clicked => {
                                                     root.submit-phone();
                                                 }
@@ -10792,7 +10807,7 @@ export component AppWindow inherits Window {
                                             if root.auth-needs-code: HudButton {
                                                 label: @tr("Invia codice");
                                                 enabled: root.can-submit-code;
-                                                reason: @tr("Scrivere prima il codice ricevuto.");
+                                                reason: !root.can-submit-code ? @tr("Scrivere prima il codice ricevuto.") : "";
                                                 clicked => {
                                                     root.submit-code();
                                                 }
@@ -10800,7 +10815,7 @@ export component AppWindow inherits Window {
                                             if root.auth-needs-password: HudButton {
                                                 label: @tr("Invia password");
                                                 enabled: root.can-submit-password;
-                                                reason: @tr("Scrivere prima la parola d'ordine.");
+                                                reason: !root.can-submit-password ? @tr("Scrivere prima la parola d'ordine.") : "";
                                                 clicked => {
                                                     root.submit-password();
                                                 }
@@ -10869,7 +10884,7 @@ export component AppWindow inherits Window {
                                             HudButton {
                                                 label: @tr("Rimuovi questo account\u{2026}");
                                                 enabled: root.account-selected;
-                                                reason: @tr("Nessun account selezionato.");
+                                                reason: !root.account-selected ? @tr("Nessun account selezionato.") : "";
                                                 clicked => {
                                                     reset-panel.open = true;
                                                 }
@@ -14708,7 +14723,8 @@ export component AppWindow inherits Window {
                                             }
                                             HudButton {
                                                 label: @tr("Metti in pausa l'acquisizione");
-                                                enabled: root.monitoring-can-pause-acquisition;
+                                                enabled: root.monitoring-can-pause-acquisition && root.monitoring-pause-reason-ok(root.monitoring-pause-reason);
+                                                reason: root.monitoring-can-pause-acquisition && !root.monitoring-pause-reason-ok(root.monitoring-pause-reason) ? @tr("Scrivere prima perché la pausa, in almeno 20 caratteri.") : "";
                                                 clicked => {
                                                     root.monitoring-pause-acquisition(root.monitoring-pause-reason);
                                                 }
@@ -14721,6 +14737,20 @@ export component AppWindow inherits Window {
                                                 }
                                             }
                                             Rectangle { horizontal-stretch: 1; background: transparent; }
+                                        }
+                                        if root.monitoring-can-pause-acquisition && root.monitoring-pause-reason-hint(root.monitoring-pause-reason) != "": Text {
+                                            text: root.monitoring-pause-reason-hint(root.monitoring-pause-reason);
+                                            color: Palette.text-muted;
+                                            font-size: Typography.body-secondary;
+                                            wrap: word-wrap;
+                                        }
+                                        if root.monitoring-pause-outcome != "": Text {
+                                            text: root.monitoring-pause-outcome;
+                                            color: Palette.text;
+                                            font-size: Typography.body-secondary;
+                                            wrap: word-wrap;
+                                            accessible-role: text;
+                                            accessible-label: root.monitoring-pause-outcome;
                                         }
                                     }
                                 }
@@ -17696,12 +17726,21 @@ export component AppWindow inherits Window {
                                         rip-88 := HorizontalLayout {
                                             padding: Spacing.lg;
                                             spacing: Spacing.md;
-                                            Text {
-                                                text: row.report;
-                                                color: Palette.text;
-                                                font-size: Typography.body;
+                                            VerticalLayout {
                                                 horizontal-stretch: 1;
-                                                wrap: word-wrap;
+                                                spacing: Spacing.xs;
+                                                Text {
+                                                    text: row.report;
+                                                    color: Palette.text;
+                                                    font-size: Typography.body;
+                                                    wrap: word-wrap;
+                                                }
+                                                Text {
+                                                    text: row.folder;
+                                                    color: Palette.text-muted;
+                                                    font-size: Typography.body-secondary;
+                                                    wrap: word-wrap;
+                                                }
                                             }
                                             Text {
                                                 text: row.status;
@@ -17713,7 +17752,7 @@ export component AppWindow inherits Window {
                                         }
 
                                         accessible-role: text;
-                                        accessible-label: row.report + ": " + row.status;
+                                        accessible-label: row.report + ". " + row.folder + " " + row.status;
                                     }
                                 }
                             }
@@ -26380,7 +26419,7 @@ export component AppWindow inherits Window {
                                             HudButton {
                                                 label: @tr("Seleziona i visibili");
                                                 enabled: root.report-contents.length > 0;
-                                                reason: @tr("Nessun contenuto da selezionare con il filtro corrente.");
+                                                reason: root.report-contents.length == 0 ? @tr("Nessun contenuto da selezionare con il filtro corrente.") : "";
                                                 clicked => {
                                                     root.report-select-visible();
                                                 }
@@ -26388,7 +26427,7 @@ export component AppWindow inherits Window {
                                             HudButton {
                                                 label: @tr("Azzera la selezione");
                                                 enabled: root.report-selected > 0;
-                                                reason: @tr("Nessun contenuto è selezionato.");
+                                                reason: root.report-selected == 0 ? @tr("Nessun contenuto è selezionato.") : "";
                                                 clicked => {
                                                     root.report-clear-selection();
                                                 }
@@ -26617,6 +26656,17 @@ export component AppWindow inherits Window {
                                                 }
                                             }
 
+                                            // LA TERZA RIGA DELL'INTESTAZIONE (CU01-008): veniva
+                                            // dal profilo e si stampava senza comparire qui.
+                                            TextField {
+                                                label: @tr("Sede, indirizzo e recapiti");
+                                                placeholder: @tr("Terza riga dell'intestazione");
+                                                value <=> root.report-premises;
+                                                edited => {
+                                                    root.report-fields-edited();
+                                                }
+                                            }
+
                                             HorizontalLayout {
                                                 spacing: Spacing.md;
                                                 vertical-stretch: 0;
@@ -26718,7 +26768,7 @@ export component AppWindow inherits Window {
                                                     HudButton {
                                                         label: @tr("Togli lo stemma");
                                                         enabled: root.report-emblem != "";
-                                                        reason: @tr("Nessuno stemma è stato scelto.");
+                                                        reason: root.report-emblem == "" ? @tr("Nessuno stemma è stato scelto.") : "";
                                                         clicked => {
                                                             root.report-clear-emblem();
                                                         }
@@ -28386,7 +28436,14 @@ export component AppWindow inherits Window {
                             }
                         }
                     }
-                    Text {
+                    // IL TOUR ARRIVA ALL'ALBERO DI ACCESSIBILITÀ (COLLAUDO-FIX-01,
+                    // CU01-012). Lo strato del tour non è condizionale, è
+                    // nascosto e mostrato; il ponte verso Windows rifà l'albero
+                    // intero quando nasce un elemento, e il collaudo non vi ha
+                    // trovato il fumetto, mentre «Scopri che cosa è cambiato»,
+                    // che è condizionale, c'era. Questa riga nasce con il tour,
+                    // e l'albero si rifà con il fumetto dentro.
+                    if root.tour-active: Text {
                         text: @tr("Frecce per andare avanti e indietro, Esc per uscire.");
                         color: Palette.text-muted;
                         font-size: Typography.group-label;

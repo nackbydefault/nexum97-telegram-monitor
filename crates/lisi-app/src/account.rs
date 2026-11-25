@@ -1225,7 +1225,7 @@ pub fn refresh(window: &AppWindow, session: &SharedSession, message: Option<&str
         } else {
             (view.stage.headline(), view.stage.detail())
         };
-        window.set_auth_headline(headline.into());
+        window.set_auth_headline(crate::lingua::schermo(headline));
         // Una preparazione che dura dice da quanto (OBS-TG-1): il momento in
         // cui è cominciata si ricorda fra un giro di pompaggio e l'altro.
         let preparazione = PREPARAZIONE.with(|inizio| {
@@ -1239,10 +1239,10 @@ pub fn refresh(window: &AppWindow, session: &SharedSession, message: Option<&str
             }
         });
         match preparazione {
-            Some(da) => {
-                window.set_auth_detail(lisi_services::auth::preparing_detail(da.elapsed()).into())
-            }
-            None => window.set_auth_detail(detail.into()),
+            Some(da) => window.set_auth_detail(crate::lingua::schermo(
+                lisi_services::auth::preparing_detail(da.elapsed()),
+            )),
+            None => window.set_auth_detail(crate::lingua::schermo(detail)),
         }
         window.set_auth_busy(view.busy);
         window.set_auth_authenticated(view.stage == AuthStage::Authenticated);
@@ -1288,12 +1288,12 @@ pub fn refresh(window: &AppWindow, session: &SharedSession, message: Option<&str
         window.set_auth_demo(false);
         let no_account = session.selected_account.is_none();
         window.set_auth_headline(if no_account {
-            "Nessun account selezionato".into()
+            crate::lingua::schermo("Nessun account selezionato")
         } else {
-            "Accesso non disponibile".into()
+            crate::lingua::schermo("Accesso non disponibile")
         });
         window.set_auth_detail(if no_account {
-            "Selezionare un account, o crearne uno su un profilo, per avviare l'accesso.".into()
+            crate::lingua::schermo(NESSUN_ACCOUNT_PER_L_ACCESSO)
         } else {
             SharedString::default()
         });
@@ -1580,11 +1580,35 @@ fn message_of(outcome: Result<&'static str, String>) -> String {
     }
 }
 
+/// Che cosa fare quando nessun account è selezionato, nella sezione Accesso.
+///
+/// Dal 2026-11 le credenziali sono dell'applicazione e i loro profili non
+/// esistono più (APP-CREDENTIALS-01): la frase della 0.2.2 chiedeva ancora di
+/// creare un account «su un profilo» (COLLAUDO-FIX-01, CU01-011). Il comando
+/// nominato è quello che la schermata mostra.
+const NESSUN_ACCOUNT_PER_L_ACCESSO: &str = "Selezionare un account, o aggiungerne uno con «Aggiungi un altro account…», per avviare \
+     l'accesso.";
+
 #[cfg(test)]
 mod tests {
     use lisi_core::model::MaskedPhoneNumber;
 
     use super::active_account_label;
+
+    /// **Senza account, la sezione Accesso non parla di profili che non
+    /// esistono più, e nomina il comando che c'è** (COLLAUDO-FIX-01, CU01-011).
+    /// Vista rossa con la frase della 0.2.2, «o crearne uno su un profilo».
+    #[test]
+    fn senza_account_l_accesso_non_parla_di_profili() {
+        let frase = super::NESSUN_ACCOUNT_PER_L_ACCESSO;
+        assert!(!frase.to_lowercase().contains("profil"), "{frase}");
+        let interfaccia = include_str!("../ui/app-window.slint");
+        assert!(
+            interfaccia.contains("@tr(\"Aggiungi un altro account\\u{2026}\")"),
+            "il comando nominato deve esistere nella schermata"
+        );
+        assert!(frase.contains("«Aggiungi un altro account…»"), "{frase}");
+    }
 
     /// Manifest di questo crate, letto a tempo di compilazione.
     const MANIFEST: &str = include_str!("../Cargo.toml");

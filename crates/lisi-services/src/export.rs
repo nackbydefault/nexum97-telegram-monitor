@@ -393,6 +393,13 @@ pub struct Verification {
     pub report_name: String,
     /// Verdetto.
     pub status: VerificationStatus,
+    /// La cartella del pacchetto, relativa a quella esaminata; vuota per un
+    /// file della cartella esaminata stessa (COLLAUDO-FIX-01, CU01-009).
+    ///
+    /// Due copie dello stesso pacchetto hanno lo stesso numero e gli stessi
+    /// nomi: senza la cartella, l'operatore non sapeva quale delle due fosse
+    /// stata toccata.
+    pub folder: String,
 }
 
 impl Verification {
@@ -472,6 +479,7 @@ fn package_verifications(manifest_path: &Path) -> Vec<Verification> {
         // un manifest che non si e' potuto leggere, e va detto invece di
         // sparire dall'elenco.
         return vec![Verification {
+            folder: String::new(),
             report_name: etichetta,
             status: VerificationStatus::ManifestUnreadable,
         }];
@@ -481,6 +489,7 @@ fn package_verifications(manifest_path: &Path) -> Vec<Verification> {
         .entries
         .into_iter()
         .map(|entry| Verification {
+            folder: String::new(),
             report_name: format!("{etichetta} · {}", entry.file_name),
             status: entry.status,
         })
@@ -499,6 +508,7 @@ pub fn verify_manifest_file(manifest_path: &Path) -> Verification {
                 "manifest oltre la dimensione ammessa"
             );
             return Verification {
+                folder: String::new(),
                 report_name,
                 status: VerificationStatus::ManifestUnreadable,
             };
@@ -506,6 +516,7 @@ pub fn verify_manifest_file(manifest_path: &Path) -> Verification {
         Ok(_) => {}
         Err(_) => {
             return Verification {
+                folder: String::new(),
                 report_name,
                 status: VerificationStatus::ManifestUnreadable,
             };
@@ -514,6 +525,7 @@ pub fn verify_manifest_file(manifest_path: &Path) -> Verification {
 
     let Ok(manifest_text) = std::fs::read_to_string(manifest_path) else {
         return Verification {
+            folder: String::new(),
             report_name,
             status: VerificationStatus::ManifestUnreadable,
         };
@@ -530,6 +542,7 @@ pub fn verify_manifest_file(manifest_path: &Path) -> Verification {
                 "manifest non interpretabile"
             );
             return Verification {
+                folder: String::new(),
                 report_name,
                 status: VerificationStatus::ManifestUnreadable,
             };
@@ -546,6 +559,7 @@ pub fn verify_manifest_file(manifest_path: &Path) -> Verification {
         Ok(digest) => digest,
         Err(_) => {
             return Verification {
+                folder: String::new(),
                 report_name,
                 status: VerificationStatus::ReportMissing,
             };
@@ -562,6 +576,7 @@ pub fn verify_manifest_file(manifest_path: &Path) -> Verification {
     };
 
     Verification {
+        folder: String::new(),
         report_name,
         status,
     }
@@ -692,6 +707,7 @@ impl ExportService {
             let Ok(entries) = std::fs::read_dir(cartella) else {
                 continue;
             };
+            let prima = verifications.len();
             for entry in entries.flatten() {
                 let path = entry.path();
                 let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
@@ -704,8 +720,20 @@ impl ExportService {
                     verifications.extend(package_verifications(&path));
                 }
             }
+            // Dove sta, detto rispetto alla cartella esaminata (CU01-009).
+            let detta = cartella
+                .strip_prefix(directory)
+                .map(|relativa| relativa.display().to_string())
+                .unwrap_or_default();
+            for verifica in verifications.iter_mut().skip(prima) {
+                verifica.folder.clone_from(&detta);
+            }
         }
-        verifications.sort_by(|left, right| left.report_name.cmp(&right.report_name));
+        verifications.sort_by(|left, right| {
+            left.report_name
+                .cmp(&right.report_name)
+                .then_with(|| left.folder.cmp(&right.folder))
+        });
 
         self.record_scan(&verifications, actor, now)?;
         Ok(verifications)

@@ -979,6 +979,88 @@ mod tests {
     ///
     /// Una prova sola: il backend di prova si inizializza una volta per
     /// processo e la finestra vuole un solo filo.
+    /// **Il tour si legge con un lettore di schermo**: il fumetto dice a che
+    /// punto si è e che cosa dice il passo, e i suoi comandi sono pulsanti che
+    /// si premono (COLLAUDO-FIX-01, CU01-012).
+    ///
+    /// Il motore di prova non passa dal ponte verso Windows: questa prova
+    /// tiene la struttura che il lettore di schermo legge, e la prova a vista
+    /// con l'Assistente vocale resta in HVQ-175 (campagna 5).
+    #[test]
+    fn il_tour_si_legge_con_un_lettore_di_schermo() {
+        use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementRoot};
+
+        i_slint_backend_testing::init_no_event_loop();
+        let Ok(window) = AppWindow::new() else {
+            panic!("la finestra di prova deve nascere");
+        };
+        if slint::select_bundled_translation("").is_err() {
+            panic!("la lingua di partenza deve potersi scegliere");
+        }
+        let Ok(database) = Database::open_in_memory() else {
+            panic!("l'archivio di prova deve aprirsi");
+        };
+        let Some(tour) = create(Some(database), Rc::new(contesto)) else {
+            panic!("il tour deve nascere");
+        };
+        wire(&window, &tour);
+        window.global::<DocumentProfile>().set_answered(true);
+        window.invoke_open_page(3);
+        window.show().ok();
+        window.invoke_tour_open_panel();
+        window.invoke_tour_requested(false);
+        assert!(window.get_tour_active());
+
+        let pulsante = |etichetta: &str| -> ElementHandle {
+            let trovati: Vec<ElementHandle> =
+                ElementHandle::find_by_accessible_label(&window, etichetta)
+                    .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
+                    .collect();
+            let Some(primo) = trovati.into_iter().next() else {
+                panic!("«{etichetta}» deve essere un pulsante per chi ascolta");
+            };
+            primo
+        };
+        for etichetta in ["Indietro", "Avanti", "Esci dal tour"] {
+            pulsante(etichetta);
+        }
+        let fumetto = window
+            .root_element()
+            .query_descendants()
+            .match_accessible_role(AccessibleRole::Groupbox)
+            .match_predicate(|e| {
+                e.accessible_label()
+                    .is_some_and(|etichetta| etichetta.starts_with("1 di "))
+            })
+            .find_all();
+        assert_eq!(fumetto.len(), 1, "il fumetto deve dire «1 di …» e il passo");
+
+        // Premuto da un lettore di schermo, «Avanti» va avanti.
+        pulsante("Avanti").invoke_accessible_default_action();
+        assert_eq!(window.get_tour_index(), 1);
+        pulsante("Esci dal tour").invoke_accessible_default_action();
+        assert!(!window.get_tour_active());
+    }
+
+    /// **Nello strato del tour nasce un elemento quando il tour comincia**, e
+    /// il ponte verso Windows rifà l'albero di accessibilità con il fumetto
+    /// dentro (COLLAUDO-FIX-01, CU01-012). Vista rossa con la 0.2.2: lo strato
+    /// era soltanto nascosto e mostrato, senza un elemento che nascesse.
+    #[test]
+    fn il_fumetto_nasce_con_il_tour() {
+        let inizio = UI
+            .find("tour-layer := Rectangle {")
+            .unwrap_or_else(|| panic!("lo strato del tour deve esistere"));
+        let strato = &UI[inizio..];
+        let fine = strato
+            .find("\n    }\n")
+            .unwrap_or_else(|| panic!("lo strato del tour deve chiudersi"));
+        assert!(
+            strato[..fine].contains(concat!("if root.tour-", "active: Text {")),
+            "nello strato del tour deve nascere un elemento con il tour"
+        );
+    }
+
     #[test]
     fn il_tour_sulla_finestra_vera() {
         i_slint_backend_testing::init_no_event_loop();

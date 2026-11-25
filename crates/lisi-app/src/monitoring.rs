@@ -133,7 +133,9 @@ pub fn select(window: &AppWindow, monitoring: &SharedMonitoring, index: i32) {
 /// Riporta nell'interfaccia lo stato del monitoraggio **scelto**.
 pub fn refresh(window: &AppWindow, monitoring: &SharedMonitoring, message: Option<&str>) {
     if let Some(text) = message {
-        window.set_monitoring_message(SharedString::from(text));
+        // Al confine con lo schermo, come ogni testo del Rust: le frasi dei
+        // comandi hanno la loro voce nel catalogo (COLLAUDO-FIX-01, CU01-010).
+        window.set_monitoring_message(crate::lingua::schermo(text));
     }
 
     let elenco = monitoring.borrow().summaries().unwrap_or_else(|error| {
@@ -455,6 +457,37 @@ fn annuncia_sul_live(avviato: bool, nome: &str, istante: lisi_core::Timestamp) {
     }
 }
 
+/// Se il motivo scritto basta per una pausa (COLLAUDO-FIX-01, CU01-005).
+///
+/// La regola è quella del dominio, `OperationalReason`, e non una sua copia:
+/// il pulsante si accende esattamente quando il servizio accetterebbe.
+fn motivo_della_pausa_basta(scritto: &str) -> bool {
+    lisi_core::model::reason::OperationalReason::try_new(scritto).is_ok()
+}
+
+/// La frase accanto al campo del motivo, mentre si scrive (CU01-005).
+///
+/// Vuota quando il campo è vuoto, perché un campo appena aperto non è un
+/// errore, e quando il motivo basta. Altrimenti dice quanti caratteri
+/// mancano, contati come li conta il dominio: senza gli spazi ai bordi, così
+/// un campo di soli spazi ne chiede venti.
+fn suggerimento_del_motivo(scritto: &str) -> String {
+    use lisi_core::model::reason::{MAX_REASON_CHARS, MIN_REASON_CHARS};
+
+    let scritti = scritto.trim().chars().count();
+    if scritto.is_empty() || motivo_della_pausa_basta(scritto) {
+        return String::new();
+    }
+    if scritti > MAX_REASON_CHARS {
+        // Il numero è quello di `MAX_REASON_CHARS`: una prova li tiene uguali.
+        return String::from("Il motivo è troppo lungo: al massimo 500 caratteri.");
+    }
+    match MIN_REASON_CHARS.saturating_sub(scritti) {
+        1 => String::from("Il motivo è corto: manca ancora 1 carattere."),
+        mancano => format!("Il motivo è corto: mancano ancora {mancano} caratteri."),
+    }
+}
+
 /// Mette in pausa l'acquisizione del monitoraggio mostrato, con il motivo, o
 /// la riprende se il motivo manca (PAUSE-01, ADR-0172).
 fn pause_or_resume(monitoring: &SharedMonitoring, motivo: Option<&str>) -> String {
@@ -659,6 +692,17 @@ fn start_from_wizard(
     }
 }
 
+/// Collega il controllo del motivo della pausa, mentre si scrive (CU01-005).
+///
+/// A sé perché non tocca il servizio: la prova della schermata lo collega da
+/// sola, senza archivio.
+fn wire_pause_reason(window: &AppWindow) {
+    window.on_monitoring_pause_reason_ok(|scritto| motivo_della_pausa_basta(&scritto));
+    window.on_monitoring_pause_reason_hint(|scritto| {
+        crate::lingua::schermo(suggerimento_del_motivo(&scritto))
+    });
+}
+
 /// Collega i comandi della schermata al servizio.
 ///
 /// Riceve anche la composizione del wizard perché l'avvio parte da lì: è il
@@ -675,6 +719,7 @@ pub fn wire(
         let monitoring = Rc::clone(monitoring);
         window.on_monitoring_shown(move || {
             if let Some(window) = handle.upgrade() {
+                window.set_monitoring_pause_outcome(SharedString::default());
                 refresh(&window, &monitoring, Some(""));
             }
         });
@@ -688,6 +733,8 @@ pub fn wire(
                 return;
             }
             if let Some(window) = handle.upgrade() {
+                // L'esito della pausa era di un altro monitoraggio (CU01-005).
+                window.set_monitoring_pause_outcome(SharedString::default());
                 select(&window, &monitoring, index);
             }
         });
@@ -710,9 +757,12 @@ pub fn wire(
         });
     }
 
+    wire_pause_reason(window);
+
     {
         // LA PAUSA VERA (PAUSE-01, ADR-0172): con il motivo, che resta accanto
-        // al periodo non coperto. Riuscita, il campo si svuota.
+        // al periodo non coperto. Riuscita, il campo si svuota; rifiutata, il
+        // testo resta e l'esito si legge accanto ai comandi (CU01-005).
         let handle = window.as_weak();
         let monitoring = Rc::clone(monitoring);
         window.on_monitoring_pause_acquisition(move |motivo| {
@@ -726,6 +776,7 @@ pub fn wire(
             if message.starts_with("Acquisizione in pausa") {
                 window.set_monitoring_pause_reason(SharedString::default());
             }
+            window.set_monitoring_pause_outcome(crate::lingua::schermo(&message));
             refresh(&window, &monitoring, Some(&message));
         });
     }
@@ -741,6 +792,7 @@ pub fn wire(
                 return;
             };
             let message = pause_or_resume(&monitoring, None);
+            window.set_monitoring_pause_outcome(crate::lingua::schermo(&message));
             refresh(&window, &monitoring, Some(&message));
         });
     }
@@ -787,6 +839,172 @@ mod tests {
     use lisi_core::model::SessionDuration;
 
     use super::{MONITORING_PAGE, duration_label};
+
+    /// **Accanto al campo, quanti caratteri mancano; niente se il campo è vuoto
+    /// o se il motivo basta** (COLLAUDO-FIX-01, CU01-005).
+    #[test]
+    fn il_motivo_della_pausa_dice_quanti_caratteri_mancano() {
+        use super::{motivo_della_pausa_basta, suggerimento_del_motivo};
+
+        assert_eq!(suggerimento_del_motivo(""), "");
+        assert_eq!(
+            suggerimento_del_motivo("del collaudo"),
+            "Il motivo è corto: mancano ancora 8 caratteri."
+        );
+        assert_eq!(
+            suggerimento_del_motivo("riunione d'ufficio "),
+            "Il motivo è corto: mancano ancora 2 caratteri.",
+            "gli spazi ai bordi non contano"
+        );
+        assert_eq!(
+            suggerimento_del_motivo("riunione dell'ufficio"),
+            "",
+            "ventun caratteri bastano"
+        );
+        assert_eq!(
+            suggerimento_del_motivo("riunione d'ufficio."),
+            "Il motivo è corto: manca ancora 1 carattere."
+        );
+        assert_eq!(
+            suggerimento_del_motivo("   "),
+            "Il motivo è corto: mancano ancora 20 caratteri."
+        );
+        assert_eq!(
+            suggerimento_del_motivo(&"x".repeat(501)),
+            "Il motivo è troppo lungo: al massimo 500 caratteri."
+        );
+        assert_eq!(
+            lisi_core::model::reason::MAX_REASON_CHARS,
+            500,
+            "la frase dice 500"
+        );
+
+        // La regola è quella del dominio, ai due lati della soglia.
+        assert!(!motivo_della_pausa_basta(&"è".repeat(19)));
+        assert!(motivo_della_pausa_basta(&"è".repeat(20)));
+        assert!(!motivo_della_pausa_basta(&format!(
+            "  {}  ",
+            "x".repeat(19)
+        )));
+    }
+
+    /// Una finestra di prova sulla sezione della pausa, con il controllo del
+    /// motivo collegato e un registro dei comandi arrivati.
+    fn finestra_della_pausa() -> (
+        crate::AppWindow,
+        std::rc::Rc<std::cell::RefCell<Vec<String>>>,
+    ) {
+        use slint::ComponentHandle;
+
+        i_slint_backend_testing::init_no_event_loop();
+        let Ok(window) = crate::AppWindow::new() else {
+            panic!("la finestra di prova deve potersi costruire");
+        };
+        if slint::select_bundled_translation("").is_err() {
+            panic!("la lingua di partenza deve potersi scegliere");
+        }
+        window
+            .window()
+            .set_size(slint::LogicalSize::new(1366.0, 1040.0));
+        if window.show().is_err() {
+            panic!("la finestra di prova deve potersi mostrare");
+        }
+        super::wire_pause_reason(&window);
+        let registro = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        {
+            let registro = std::rc::Rc::clone(&registro);
+            window.on_monitoring_pause_acquisition(move |motivo| {
+                registro.borrow_mut().push(motivo.to_string());
+            });
+        }
+        window.set_monitoring_present(true);
+        window.set_monitoring_can_pause_acquisition(true);
+        window.invoke_open_page(MONITORING_PAGE);
+        (window, registro)
+    }
+
+    /// **Con un motivo corto il comando della pausa è spento e non parte; la
+    /// frase accanto al campo dice perché** (COLLAUDO-FIX-01, CU01-005, UX-07).
+    ///
+    /// Vista rossa con il pulsante acceso dalla sola `monitoring-can-pause-
+    /// acquisition`, com'era nella 0.2.2: con dodici caratteri il comando
+    /// partiva, e il rifiuto si leggeva soltanto in cima alla schermata.
+    #[test]
+    fn un_motivo_corto_non_mette_in_pausa() {
+        use i_slint_backend_testing::ElementHandle;
+
+        const SPENTO: &str = "Metti in pausa l'acquisizione. Scrivere prima perché la pausa, in almeno 20 caratteri.";
+        const ACCESO: &str = "Metti in pausa l'acquisizione";
+
+        let (window, registro) = finestra_della_pausa();
+        window.set_monitoring_pause_reason("del collaudo".into());
+
+        // Che cosa la finestra espone sulla pausa: serve a leggere un fallimento.
+        let sulla_pausa = |window: &crate::AppWindow| -> Vec<String> {
+            use i_slint_backend_testing::ElementRoot;
+            window
+                .root_element()
+                .query_descendants()
+                .match_predicate(|e| e.accessible_label().is_some_and(|l| l.contains("pausa")))
+                .find_all()
+                .iter()
+                .filter_map(ElementHandle::accessible_label)
+                .map(|l| l.to_string())
+                .collect()
+        };
+        let spenti: Vec<ElementHandle> =
+            ElementHandle::find_by_accessible_label(&window, SPENTO).collect();
+        let Some(pulsante) = spenti.first() else {
+            panic!(
+                "con un motivo corto il pulsante deve dire perché è spento; sulla pausa: {:#?}",
+                sulla_pausa(&window)
+            );
+        };
+        assert_eq!(pulsante.accessible_enabled(), Some(false));
+        pulsante.invoke_accessible_default_action();
+        assert!(
+            registro.borrow().is_empty(),
+            "partito: {:?}",
+            registro.borrow()
+        );
+        assert_eq!(
+            ElementHandle::find_by_accessible_label(&window, ACCESO)
+                .filter(|e| e.accessible_role()
+                    == Some(i_slint_backend_testing::AccessibleRole::Button))
+                .count(),
+            0,
+            "spento, il nome del pulsante non può essere quello del comando pronto"
+        );
+        assert_eq!(
+            ElementHandle::find_by_accessible_label(
+                &window,
+                "Il motivo è corto: mancano ancora 8 caratteri."
+            )
+            .count(),
+            1,
+            "la frase accanto al campo deve dire quanti caratteri mancano"
+        );
+
+        // Il testo scritto resta: non si perde con il rifiuto.
+        assert_eq!(window.get_monitoring_pause_reason(), "del collaudo");
+
+        // Con il motivo che basta, il comando si accende e parte una volta.
+        window.set_monitoring_pause_reason("del collaudo: verifica della pausa".into());
+        let accesi: Vec<ElementHandle> = ElementHandle::find_by_accessible_label(&window, ACCESO)
+            .filter(|e| {
+                e.accessible_role() == Some(i_slint_backend_testing::AccessibleRole::Button)
+            })
+            .collect();
+        let Some(pulsante) = accesi.first() else {
+            panic!("con un motivo che basta il pulsante deve chiamarsi come il comando");
+        };
+        assert_eq!(pulsante.accessible_enabled(), Some(true));
+        pulsante.invoke_accessible_default_action();
+        assert_eq!(
+            *registro.borrow(),
+            vec!["del collaudo: verifica della pausa"]
+        );
+    }
 
     /// Interfaccia, letta a tempo di compilazione per il controllo qui sotto.
     const UI: &str = include_str!("../ui/app-window.slint");

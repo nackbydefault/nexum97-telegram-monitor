@@ -543,6 +543,7 @@ mod tests {
         ("TrendRow", "what", OSS),
         ("TrendRow", "counts", CAL),
         ("VerificationRow", "report", CAL),
+        ("VerificationRow", "folder", CAL),
         ("VerificationRow", "status", CAL),
         ("VerificationRow", "ok", Struttura),
         ("WatchedOrganisationEntry", "id", Struttura),

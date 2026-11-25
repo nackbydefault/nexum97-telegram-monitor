@@ -94,6 +94,7 @@ fn relazione() -> Vec<u8> {
     let operator = Actor::try_new("operatore").expect("attore valido");
     let snapshot = fotografia(&[1, 2, 3]);
     let session = NarrativeSession {
+        pauses: Vec::new(),
         label: String::from("Monitoraggio di prova"),
         started_at: Timestamp::from_millis(1_752_000_000_000),
         ended_at: Some(Timestamp::from_millis(1_752_010_800_000)),
@@ -153,6 +154,7 @@ fn allegato() -> Vec<u8> {
     let profile = profilo();
     let operator = Actor::try_new("operatore").expect("attore valido");
     let session = LedgerSession {
+        pauses: Vec::new(),
         label: String::from("Monitoraggio di prova"),
         started_at: Timestamp::from_millis(1_752_000_000_000),
         ended_at: None,
@@ -412,6 +414,7 @@ fn allegato_lungo() -> Vec<u8> {
     let profile = profilo();
     let operator = Actor::try_new("operatore.prova").expect("attore valido");
     let session = LedgerSession {
+        pauses: Vec::new(),
         label: String::from("Monitoraggio di prova"),
         started_at: Timestamp::from_millis(1_752_000_000_000),
         ended_at: Some(Timestamp::from_millis(1_752_010_800_000)),

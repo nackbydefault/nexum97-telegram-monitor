@@ -116,6 +116,9 @@ pub struct MonitoringSection {
     pub state: String,
     /// La copertura di ciascuna fonte.
     pub coverage: Vec<crate::coverage::CoverageLine>,
+    /// Le pause dell'acquisizione, già in parole: quando, chi e perché
+    /// (COLLAUDO-FIX-01, CU01-015).
+    pub pauses: Vec<String>,
     /// Quanti contenuti.
     pub contents: usize,
     /// Quanti avvisi per livello, da 1 a 4.
@@ -156,17 +159,16 @@ pub fn compose(
             ),
         ],
     };
-    let footer = vec![riga(
-        profile.footer_line.as_ref().map(|f| f.as_str()),
-        "Riferimenti dell'ufficio",
-    )];
+    // Facoltativo, come nella relazione (CU01-008).
+    let footer =
+        crate::report_narrative::optional_footer(profile.footer_line.as_ref().map(|f| f.as_str()));
 
     let mut blocks = vec![
         Block::Lead {
             lead: String::from("Oggetto:"),
             body: format!(
-                "Rapporto complessivo {reference} su {} monitoraggi.",
-                sections.len()
+                "Rapporto complessivo {reference} su {}.",
+                lisi_core::text::counted(sections.len(), "monitoraggio", "monitoraggi")
             ),
         },
         Block::Lead {
@@ -211,7 +213,7 @@ pub fn compose(
             lead: String::from("Periodo:"),
             body: format!("{}. Stato: {}.", periodo(sezione), sezione.state),
         });
-        crate::report_narrative::push_coverage(&mut blocks, &sezione.coverage);
+        crate::report_narrative::push_coverage(&mut blocks, &sezione.coverage, &sezione.pauses);
         let [uno, due, tre, quattro] = sezione.alerts_by_level;
         blocks.push(Block::Lead {
             lead: String::from("Contenuti e avvisi di questo monitoraggio:"),
@@ -335,6 +337,11 @@ impl ReportService {
                     .sources
                     .into_iter()
                     .map(|(_, source, coverage)| crate::coverage::CoverageLine { source, coverage })
+                    .collect(),
+                pauses: database
+                    .acquisition_pauses(session_id)?
+                    .iter()
+                    .map(crate::report_narrative::pause_in_words)
                     .collect(),
                 contents: contenuti,
                 alerts_by_level: avvisi,
@@ -539,6 +546,7 @@ mod tests {
             ended_at: None,
             state: String::from("In corso"),
             coverage: Vec::new(),
+            pauses: Vec::new(),
             contents: contenuti,
             alerts_by_level: [3, 2, 1, 0],
             reports: vec![(String::from("2026-0007"), String::from("Completato"))],
