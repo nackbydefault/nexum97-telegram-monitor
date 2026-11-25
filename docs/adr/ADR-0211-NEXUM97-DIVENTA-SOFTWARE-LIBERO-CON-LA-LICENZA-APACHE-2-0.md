@@ -2,7 +2,7 @@
 
 Ideazione e progettazione: Giuseppe LISI
 
-**Stato:** accettato (decisione del committente del 2026-11-25) · **Data:** 2026-11-25 ·
+**Stato:** accettato ed eseguito (decisione del committente del 2026-11-25; repository pubblica: richiesta di modifica #3, squash `301493c`, licenza riconosciuta da GitHub) · **Data:** 2026-11-25 ·
 **Milestone:** OSS-LICENSING-01 · **Decisione:** DEC-524 · **Sostituisce:** ADR-0007 (la licenza
 proprietaria del prodotto) · **Modifica:** ADR-0210 §3 (il codice pubblicato «per consultazione»)
 · **Non modifica:** ADR-0005 (Slint), ADR-0048 (nessuna intelligenza artificiale), ADR-0210 per il
