@@ -15,9 +15,10 @@
 
 /// Identificatore SPDX della licenza del prodotto.
 ///
-/// `LicenseRef-` è la forma prevista da SPDX per le licenze non standard: il
-/// testo integrale è nel file `LICENSE`.
-pub const PRODUCT_LICENSE: &str = "LicenseRef-LISI-Proprietary";
+/// Dal 2026-11-25 il prodotto è software libero con la Apache License 2.0
+/// (ADR-0211, che sostituisce ADR-0007): il testo integrale è nel file
+/// `LICENSE`, il copyright e le terze parti nel file `NOTICE`.
+pub const PRODUCT_LICENSE: &str = "Apache-2.0";
 
 /// Componente di terze parti incorporato nell'applicazione.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -400,10 +401,19 @@ mod tests {
         }
     }
 
+    /// **La licenza del prodotto è la Apache 2.0, e il file LICENSE ne porta il
+    /// testo ufficiale** (ADR-0211). Fino al 2026-11-24 questa prova chiedeva
+    /// l'identificatore proprietario di ADR-0007, sostituito.
     #[test]
-    fn the_product_licence_is_a_licence_reference_and_not_an_open_source_identifier() {
-        assert_eq!(PRODUCT_LICENSE, "LicenseRef-LISI-Proprietary");
-        assert!(PRODUCT_LICENSE.starts_with("LicenseRef-"));
+    fn la_licenza_del_prodotto_e_la_apache_2_0() {
+        const LICENSE: &str = include_str!("../../../LICENSE");
+        const MANIFEST: &str = include_str!("../../../Cargo.toml");
+        assert_eq!(PRODUCT_LICENSE, "Apache-2.0");
+        assert!(LICENSE.contains("Apache License"));
+        assert!(LICENSE.contains("Version 2.0, January 2004"));
+        assert!(LICENSE.contains("END OF TERMS AND CONDITIONS"));
+        assert!(MANIFEST.contains("license = \"Apache-2.0\""));
+        assert!(!MANIFEST.contains("LicenseRef-LISI-Proprietary"));
     }
 
     /// Nomi delle dipendenze dirette dichiarate nei manifest del workspace.

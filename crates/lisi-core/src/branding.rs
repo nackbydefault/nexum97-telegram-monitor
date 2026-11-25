@@ -67,12 +67,13 @@ pub const ATTRIBUTION: &str = "Ideazione e progettazione: Giuseppe LISI";
 pub const PUBLISHER: &str = "Giuseppe LISI";
 
 /// La riga di copyright dell'eseguibile (proprietà `LegalCopyright` di
-/// Windows), identica alla terza riga del `LICENSE` (INSTALLED-APP-E2E-01,
-/// E2E01-24: la proprietà era vuota).
+/// Windows), identica alla seconda riga del `NOTICE` (INSTALLED-APP-E2E-01,
+/// E2E01-24: la proprietà era vuota). Il `LICENSE` porta il testo ufficiale
+/// della Apache 2.0, senza righe del titolare (ADR-0211).
 ///
 /// Solo ASCII: lo script di risorse è letto nella tabella 1252, e un «©»
 /// cambierebbe forma passando di lì.
-pub const COPYRIGHT: &str = "Copyright (c) 2026 Giuseppe LISI. Tutti i diritti riservati.";
+pub const COPYRIGHT: &str = "Copyright (c) 2026 Giuseppe LISI. Licenza Apache 2.0.";
 
 /// Nome della cartella dei dati sotto `%LOCALAPPDATA%`.
 ///
@@ -136,15 +137,16 @@ mod tests {
         }
     }
 
-    /// **La riga di copyright è quella del LICENSE** (E2E01-24), e lo script di
-    /// risorse la può portare: solo ASCII, senza virgolette.
+    /// **La riga di copyright è quella del NOTICE** (E2E01-24, ADR-0211), e lo
+    /// script di risorse la può portare: solo ASCII, senza virgolette.
     #[test]
     fn la_riga_di_copyright_e_quella_della_licenza() {
-        const LICENSE: &str = include_str!("../../../LICENSE");
+        const NOTICE: &str = include_str!("../../../NOTICE");
         assert!(
-            LICENSE.lines().any(|riga| riga.trim() == super::COPYRIGHT),
-            "la riga deve comparire identica nel LICENSE"
+            NOTICE.lines().any(|riga| riga.trim() == super::COPYRIGHT),
+            "la riga deve comparire identica nel NOTICE"
         );
+        assert!(NOTICE.contains("Ideazione e progettazione: Giuseppe LISI"));
         assert!(super::COPYRIGHT.is_ascii());
         assert!(!super::COPYRIGHT.contains('"'));
     }
@@ -264,8 +266,8 @@ mod tests {
             .count();
         // IL TERZO PUNTO, MOTIVATO (INSTALLED-APP-E2E-01, E2E01-24): la riga di
         // copyright dell'eseguibile. Non è una formula: è la riga legale del
-        // LICENSE, copiata identica, che Windows chiede in `LegalCopyright`, e
-        // una prova la tiene uguale al LICENSE. Non porta «Ideazione».
+        // NOTICE, copiata identica, che Windows chiede in `LegalCopyright`, e
+        // una prova la tiene uguale al NOTICE. Non porta «Ideazione».
         assert!(!super::COPYRIGHT.contains("Ideazione"));
         assert_eq!(
             carrying_the_name, 3,

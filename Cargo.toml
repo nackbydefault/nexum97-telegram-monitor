@@ -18,9 +18,9 @@ version = "0.2.2"
 edition = "2024"
 rust-version = "1.97.1"
 authors = ["Giuseppe LISI"]
-# Licenza proprietaria: testo in LICENSE, motivazione in ADR-0007.
-# `LicenseRef-` e' la forma SPDX per le licenze non standard.
-license = "LicenseRef-LISI-Proprietary"
+# Apache License 2.0: testo in LICENSE, copyright e terze parti in NOTICE,
+# motivazione in ADR-0211 (sostituisce la licenza proprietaria di ADR-0007).
+license = "Apache-2.0"
 # Il campo `repository` e' deliberatamente assente: l'URL definitivo non e'
 # ancora deciso e un segnaposto inventato sarebbe un metadato falso.
 # Reintrodurlo quando la visibilita' del repository sara' stabilita (ADR-0007).

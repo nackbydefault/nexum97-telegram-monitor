@@ -1,6 +1,6 @@
 # ADR-0007 — Licenza dei crate del prodotto e identità del repository
 
-- **Stato:** adottato come impostazione tecnica; **il testo della licenza richiede conferma di Giuseppe LISI**
+- **Stato:** **sostituito da ADR-0211** il 2026-11-25: il prodotto passa alla Apache License 2.0. Fino ad allora: adottato come impostazione tecnica
 - **Data:** 2026-07-20
 - **Riguarda:** `Cargo.toml`, `LICENSE`, `deny.toml`
 

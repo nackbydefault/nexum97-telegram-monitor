@@ -1,0 +1,45 @@
+name: Difetto / Bug
+description: Qualcosa non funziona come dovrebbe. / Something does not work as it should.
+labels: ["difetto"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Mai dati veri**: niente credenziali, sessioni, numeri di telefono, nomi di gruppi reali,
+        schermate con dati personali o registri non ripuliti. Una vulnerabilità si segnala in
+        privato (SECURITY.md), non qui.
+        **Never real data.** Report vulnerabilities privately (SECURITY.md), not here.
+  - type: input
+    id: versione
+    attributes:
+      label: Versione o commit / Version or commit
+      placeholder: "0.2.2, oppure l'impronta del commit"
+    validations:
+      required: true
+  - type: input
+    id: sistema
+    attributes:
+      label: Windows
+      placeholder: "Windows 11 23H2, x64"
+    validations:
+      required: true
+  - type: textarea
+    id: passi
+    attributes:
+      label: Che cosa si fa / Steps
+      description: I passi, uno per riga, possibilmente in Esercitazione (--esercitazione).
+    validations:
+      required: true
+  - type: textarea
+    id: atteso
+    attributes:
+      label: Che cosa ci si aspetta / Expected
+    validations:
+      required: true
+  - type: textarea
+    id: osservato
+    attributes:
+      label: Che cosa succede / Actual
+      description: Il testo esatto dei messaggi, senza dati personali.
+    validations:
+      required: true
